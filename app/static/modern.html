@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="icon" type="image/svg+xml" href="/static/boulder.svg">
+    <title>CVE MapServer - WebGL Map</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/vendor/maplibre-gl.css?v=2" rel="stylesheet" />
+    <script src="/static/vendor/maplibre-gl.js?v=2"></script>
+    <script src="/static/vendor/pmtiles.js?v=2"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        #minimap { position: absolute; bottom: 20px; right: 20px; width: 200px; height: 200px; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 1000; border-radius: 50%; overflow: hidden; pointer-events: none; }
+        #coords { position: absolute; bottom: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        #overlay { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 240px; width: 240px; box-sizing: border-box; font-family: sans-serif; }
+        select { margin-top: 5px; padding: 5px; width: 100%; font-size: 13px; margin-bottom: 10px; }
+        .btn { display: inline-block; margin-top: 10px; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
+        .btn:hover { background: #e0e0e0; }
+        #error-log { position: absolute; bottom: 40px; left: 10px; z-index: 2000; background: rgba(200,0,0,0.9); color: white; padding: 10px; border-radius: 4px; display: none; font-family: monospace; font-size: 12px; max-width: 70%; max-height: 180px; overflow: auto; white-space: pre-wrap; }
+        #fallback-banner { position: absolute; top: 10px; left: 265px; right: 60px; z-index: 1500; background: rgba(255, 248, 225, 0.96); color: #5d4037; border: 1px solid #ffb74d; border-radius: 6px; padding: 8px 32px 8px 12px; font-size: 12px; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: none; }
+        #fallback-banner .dismiss { position: absolute; top: 6px; right: 10px; cursor: pointer; font-weight: bold; font-size: 16px; color: #8d6e63; }
+        
+        .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 60%; max-width: 600px; border-radius: 6px; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        .code-block { background: #f4f4f4; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; overflow-x: auto; border: 1px solid #ddd; margin-bottom:15px; white-space: pre; }
+    </style>
+</head>
+<body>
+    <div id="integrationModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="document.getElementById('integrationModal').style.display='none'">&times;</span>
+        <h2>WebGL Integration Links</h2>
+        <p>Use these snippets to load the current vector layer directly into MapLibre GL JS or Mapbox GL JS.</p>
+        
+        <h3>MapLibre GL JS (Vector Source)</h3>
+        <p>If you are integrating this into a frontend application, configure your MapLibre style source like this:</p>
+        <div class="code-block" id="integrationCode"></div>
+      </div>
+    </div>
+
+    <div id="overlay">
+        <div style="text-align: center; margin-bottom: 5px;">
+            <img src="/static/sisyphus_logo.jpg" style="max-width: 160px; border-radius: 8px;">
+        </div>
+        <h3 style="margin-top: 0; text-align: center;">Vector Viewer</h3>
+        <p style="font-size: 13px; color: #555;">Rendering native MVT via WebGL.</p>
+        
+        <label for="layer-select" style="font-size: 12px; font-weight: bold;">Data Source:</label>
+        <select id="layer-select" onchange="changeLayer(this.value)"></select>
+
+        <label for="style-select" style="font-size: 12px; font-weight: bold;">Map Style:</label>
+        <select id="style-select" onchange="changeStyle(this.value)"></select>
+        
+        <button class="btn" onclick="showIntegration()">🔗 Integration Links</button>
+        <br>
+        <a href="/" class="btn" style="color: #007bff; border-color: #007bff; background: white;">&larr; Legacy Raster Viewer</a>
+    </div>
+    <div id="fallback-banner">
+        <span class="dismiss" onclick="document.getElementById('fallback-banner').style.display='none'" title="Dismiss">&times;</span>
+        <span id="fallback-banner-text"></span>
+    </div>
+    <div id="map"></div>
+    <div id="minimap"></div>
+    <div id="coords">Lat: 0.0000, Lon: 0.0000</div>
+    <div id="error-log"></div>
+    <script>
+        function reportError(prefix, err) {
+            var el = document.getElementById('error-log');
+            if (!el) return;
+            el.style.display = 'block';
+            var detail = "";
+            if (err && typeof err === 'object') {
+                detail = err.message || err.stack || JSON.stringify(err);
+            } else if (err !== undefined) {
+                detail = String(err);
+            }
+            el.innerText += prefix + (detail ? ": " + detail : "") + "\n\n";
+        }
+
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            reportError("ERROR", msg + (error && error.stack ? "\n" + error.stack : ""));
+            return false;
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+            reportError("PROMISE REJECTION", event.reason);
+        });
+
+        try {
+            // Register PMTiles protocol
+            let protocol = new pmtiles.Protocol();
+            maplibregl.addProtocol("pmtiles", protocol.tile);
+        } catch (e) {
+            console.error("PMTiles protocol registration failed", e);
+        }
+
+        var map = null;
+        var minimap = null;
+        var fallbackMap = null;
+        var fallbackMinimap = null;
+        var fallbackTileLayer = null;
+        var fallbackMiniLayer = null;
+        var usingFallback = false;
+        var leafletLoadingPromise = null;
+        var layerName = new URLSearchParams(window.location.search).get('layer') || "planet_2024_pmtiles_z12";
+        var dynamicMaxZoom = 14; 
+        var isPmtiles = false;
+        var targetLayer = null;
+        var globalConfig = null;
+
+        fetch('/api/maps?' + new Date().getTime())
+            .then(res => res.json())
+            .then(config => {
+                globalConfig = config;
+                setupState();
+                setupDropdowns();
+                initMap();
+            })
+            .catch(err => {
+                console.error("Failed to load config", err);
+                setupDropdowns(); // Fallback
+                initMap();
+            });
+
+        function setupState() {
+            if (!globalConfig) return;
+            isPmtiles = false;
+            try {
+                const worldLayers = globalConfig.maps.webgl_world.layers || [];
+                targetLayer = worldLayers.find(l => l.name === layerName);
+                if (!targetLayer && worldLayers.length > 0) {
+                    targetLayer = worldLayers.find(l => l.is_vector_tiles);
+                    layerName = targetLayer.name;
+                }
+                
+                if (targetLayer && targetLayer.maxZoom !== undefined) {
+                    dynamicMaxZoom = targetLayer.maxZoom;
+                }
+                if (targetLayer && targetLayer.path && targetLayer.path.endsWith('.pmtiles')) {
+                    isPmtiles = true;
+                }
+            } catch (e) {
+                console.error("Config parsing error", e);
+            }
+        }
+
+        function setupDropdowns() {
+            // Populate Layer Dropdown
+            var layerSelect = document.getElementById('layer-select');
+            layerSelect.innerHTML = "";
+            if (globalConfig) {
+                try {
+                    const worldLayers = globalConfig.maps.webgl_world.layers || [];
+                    worldLayers.forEach(l => {
+                        if (l.is_vector_tiles) {
+                            var isSelected = (l.name === layerName) ? "selected" : "";
+                            layerSelect.innerHTML += `<option value="${l.name}" ${isSelected}>${l.name}</option>`;
+                        }
+                    });
+                } catch(e) {}
+            }
+            if (layerSelect.innerHTML === "") {
+                layerSelect.innerHTML = `<option value="${layerName}">${layerName}</option>`;
+            }
+
+            // Populate Style Dropdown
+            var select = document.getElementById('style-select');
+            var html = "";
+            
+            if (isPmtiles) {
+                // Protomaps schema themes
+                html += '<option value="/static/vendor/protomaps-themes/light.json">Protomaps Light</option><option value="/static/vendor/protomaps-themes/grayscale.json">Protomaps Grayscale</option>';
+                html += '<option value="/static/vendor/protomaps-themes/dark.json">Protomaps Dark</option>';
+                html += '<option value="/static/vendor/protomaps-themes/white.json">Protomaps White</option>';
+                html += '<option value="/static/vendor/protomaps-themes/black.json">Protomaps Black</option>';
+                // Additional community flavors
+                html += '<option value="/static/vendor/protomaps-themes/bio.json">Protomaps Bio</option>';
+                html += '<option value="/static/vendor/protomaps-themes/black_and_white.json">Protomaps Black & White</option>';
+                html += '<option value="/static/vendor/protomaps-themes/dusk_rose.json">Protomaps Dusk Rose</option>';
+                html += '<option value="/static/vendor/protomaps-themes/flat.json">Protomaps Flat</option>';
+                html += '<option value="/static/vendor/protomaps-themes/iris_bloom.json">Protomaps Iris Bloom</option>';
+                html += '<option value="/static/vendor/protomaps-themes/rainforest.json">Protomaps Rainforest</option>';
+                html += '<option value="/static/vendor/protomaps-themes/seafoam.json">Protomaps Seafoam</option>';
+                html += '<option value="/static/vendor/protomaps-themes/sol.json">Protomaps Sol</option>';
+            } else {
+                // OpenMapTiles schema themes
+                html += '';
+                html += '';
+                html += '';
+                html += '<option value="/static/vendor/osm-liberty/style.json">OSM Liberty (Classic OSM)</option>';
+                html += '<option value="/static/vendor/carto-light/style.json">Positron (Light)</option>';
+                html += '<option value="/static/vendor/carto-dark/style.json">Dark Matter (Dark)</option>';
+                html += '<option value="/static/vendor/carto-color/style.json">OSM Bright (Colorful)</option>';
+            }
+            select.innerHTML = html;
+        }
+
+        function getRegionalBounds(layer) {
+            if (!layer || !Array.isArray(layer.bounds) || layer.bounds.length !== 4) return null;
+            var b = layer.bounds.map(Number);
+            if (b.some(isNaN) || b[0] >= b[2] || b[1] >= b[3]) return null;
+            if ((b[2] - b[0]) >= 300 && (b[3] - b[1]) >= 140) return null;
+            return b;
+        }
+
+        function isPointInBounds(lng, lat, b) {
+            return lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
+        }
+
+        function parseHashView() {
+            var h = (window.location.hash || "").replace(/^#/, "");
+            var parts = h.split("/");
+            if (parts.length >= 3) {
+                var z = parseFloat(parts[0]);
+                var lat = parseFloat(parts[1]);
+                var lng = parseFloat(parts[2]);
+                if (!isNaN(z) && !isNaN(lat) && !isNaN(lng)) {
+                    return { zoom: z, lat: lat, lng: lng };
+                }
+            }
+            return null;
+        }
+
+        function styleUrlToTileServerTheme(styleUrl) {
+            if (!styleUrl) return 'light';
+            if (styleUrl.includes('/protomaps-themes/')) {
+                return styleUrl.split('/').pop().replace('.json', '');
+            }
+            if (styleUrl.includes('carto-dark')) return 'dark';
+            if (styleUrl.includes('carto-color')) return 'sol';
+            return 'light';
+        }
+
+        function ensureLeafletLoaded() {
+            if (window.L) return Promise.resolve();
+            if (leafletLoadingPromise) return leafletLoadingPromise;
+            leafletLoadingPromise = new Promise(function(resolve, reject) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/static/leaflet/dist/leaflet.css?v=2';
+                document.head.appendChild(link);
+
+                var script = document.createElement('script');
+                script.src = '/static/leaflet/dist/leaflet.js?v=2';
+                script.onload = function() { resolve(); };
+                script.onerror = function() { reject(new Error('Failed to load Leaflet fallback')); };
+                document.head.appendChild(script);
+            });
+            return leafletLoadingPromise;
+        }
+
+        function destroyAllMaps() {
+            if (map) {
+                try { map.remove(); } catch (e) {}
+                map = null;
+            }
+            if (minimap) {
+                try { minimap.remove(); } catch (e) {}
+                minimap = null;
+            }
+            if (fallbackMap) {
+                try { fallbackMap.remove(); } catch (e) {}
+                fallbackMap = null;
+                fallbackTileLayer = null;
+            }
+            if (fallbackMinimap) {
+                try { fallbackMinimap.remove(); } catch (e) {}
+                fallbackMinimap = null;
+                fallbackMiniLayer = null;
+            }
+            document.getElementById('map').innerHTML = '';
+            document.getElementById('minimap').innerHTML = '';
+            document.getElementById('minimap').style.display = 'block';
+        }
+
+        function initServerFallback(styleUrl, webglErr) {
+            usingFallback = true;
+            var rawStatus = "";
+            if (webglErr) {
+                try {
+                    var parsed = JSON.parse(webglErr.message || "");
+                    rawStatus = (parsed && (parsed.statusMessage || parsed.message)) || "";
+                } catch (e) {
+                    rawStatus = webglErr.message || "";
+                }
+            }
+            var banner = document.getElementById('fallback-banner');
+            var bannerText = document.getElementById('fallback-banner-text');
+            if (rawStatus.includes("BindToCurrentSequence") || rawStatus.includes("GL_RENDERER = Disabled")) {
+                bannerText.innerHTML = "<strong>Chrome GPU / WebGL Disabled in Browser:</strong> Chrome's GPU process failed (<code>BindToCurrentSequence failed</code> — common on Linux after a background Chrome or driver update while the browser is open). Open <code>chrome://restart</code> in your address bar (or check <code>chrome://settings/system</code> &rarr; graphics acceleration) to restore native WebGL. Showing server-rendered fallback in the meantime.";
+            } else {
+                var cleanReason = rawStatus ? " (" + rawStatus.replace(/\s+/g, ' ').trim().replace(/</g, "&lt;") + ")" : "";
+                bannerText.innerHTML = "<strong>Browser WebGL Unavailable:</strong> Your browser could not create a WebGL context" +
+                    cleanReason +
+                    ". Restart your browser or enable hardware acceleration for native WebGL vector rendering. Showing server-rendered fallback in the meantime.";
+            }
+            banner.style.display = 'block';
+
+            ensureLeafletLoaded().then(function() {
+                destroyAllMaps();
+                var hv = parseHashView() || { zoom: 4, lat: 0, lng: 0 };
+                var theme = styleUrlToTileServerTheme(styleUrl);
+                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png';
+
+                fallbackMap = L.map('map', {
+                    zoomControl: false,
+                    worldCopyJump: true,
+                    minZoom: 0,
+                    maxZoom: 18
+                }).setView([hv.lat, hv.lng], hv.zoom);
+                L.control.zoom({ position: 'topright' }).addTo(fallbackMap);
+
+                fallbackTileLayer = L.tileLayer(tileUrl, {
+                    minZoom: 0,
+                    maxZoom: 18,
+                    maxNativeZoom: dynamicMaxZoom || 18,
+                    attribution: 'TileServer-GL (' + theme + ')'
+                }).addTo(fallbackMap);
+
+                var regBounds = getRegionalBounds(targetLayer);
+                if (regBounds && !isPointInBounds(hv.lng, hv.lat, regBounds)) {
+                    fallbackMap.fitBounds([[regBounds[1], regBounds[0]], [regBounds[3], regBounds[2]]], {
+                        padding: [40, 40],
+                        maxZoom: dynamicMaxZoom || 14
+                    });
+                }
+
+                fallbackMinimap = L.map('minimap', {
+                    zoomControl: false,
+                    attributionControl: false,
+                    dragging: false,
+                    touchZoom: false,
+                    scrollWheelZoom: false,
+                    doubleClickZoom: false,
+                    boxZoom: false,
+                    keyboard: false,
+                    minZoom: 0,
+                    maxZoom: 18
+                }).setView(fallbackMap.getCenter(), Math.max(0, fallbackMap.getZoom() - 5));
+
+                fallbackMiniLayer = L.tileLayer(tileUrl, {
+                    minZoom: 0,
+                    maxZoom: 18,
+                    maxNativeZoom: dynamicMaxZoom || 18
+                }).addTo(fallbackMinimap);
+
+                fallbackMap.on('mousemove', function(e) {
+                    document.getElementById('coords').innerText =
+                        "Lat: " + e.latlng.lat.toFixed(4) + ", Lon: " + e.latlng.lng.toFixed(4);
+                });
+
+                function syncFallbackState() {
+                    var c = fallbackMap.getCenter();
+                    var z = fallbackMap.getZoom();
+                    if (fallbackMinimap) {
+                        fallbackMinimap.setView(c, Math.max(0, z - 5), { animate: false });
+                    }
+                    window.history.replaceState(null, '', window.location.pathname + window.location.search +
+                        '#' + z + '/' + c.lat.toFixed(4) + '/' + c.lng.toFixed(4));
+                }
+                fallbackMap.on('moveend', syncFallbackState);
+                syncFallbackState();
+            }).catch(function(err) {
+                reportError("FALLBACK ERROR", err);
+            });
+        }
+
+        function loadStyle(styleUrl, callback) {
+            if (!styleUrl) return;
+            fetch(styleUrl + "?v=" + new Date().getTime())
+                .then(function(res) {
+                    if (!res.ok) throw new Error("HTTP " + res.status + " fetching " + styleUrl);
+                    return res.json();
+                })
+                .then(function(style) {
+                    // Make it fully offline!
+                    if (isPmtiles) {
+                        style.glyphs = window.location.origin + "/static/vendor/protomaps-assets/fonts/{fontstack}/{range}.pbf";
+                        const themeName = styleUrl.split('/').pop().replace('.json', '');
+                        let spriteName = themeName;
+                        const validSprites = ['light', 'dark', 'grayscale', 'black', 'white'];
+                        if (!validSprites.includes(spriteName)) {
+                            spriteName = 'light';
+                        }
+                        style.sprite = window.location.origin + "/static/vendor/protomaps-assets/sprites/v4/" + spriteName;
+                    } else {
+                        style.glyphs = window.location.origin + "/static/vendor/font-glyphs/glyphs/{fontstack}/{range}.pbf";
+                        if (style.sources["natural_earth_shaded_relief"]) { delete style.sources["natural_earth_shaded_relief"]; }
+                        if (style.layers) { style.layers = style.layers.filter(l => l.source !== "natural_earth_shaded_relief"); }
+                        
+                        if (styleUrl.includes('carto-light')) {
+                            style.sprite = window.location.origin + "/static/vendor/carto-light/sprites/sprite";
+                        } else if (styleUrl.includes('carto-dark')) {
+                            style.sprite = window.location.origin + "/static/vendor/carto-dark/sprites/sprite";
+                        } else if (styleUrl.includes('carto-color')) {
+                            style.sprite = window.location.origin + "/static/vendor/carto-color/sprites/sprite";
+                        } else {
+                            style.sprite = window.location.origin + "/static/vendor/osm-liberty/sprites/osm-liberty";
+                        }
+
+                    }
+                    var sourceUrl = "";
+                    var localSource = {
+                        "type": "vector",
+                        "maxzoom": dynamicMaxZoom
+                    };
+
+                    if (isPmtiles) {
+                        var filepath = targetLayer.path;
+                        sourceUrl = "pmtiles://" + window.location.origin + "/data/" + filepath + "?v=" + new Date().getTime();
+                        localSource.url = sourceUrl;
+                    } else {
+                        sourceUrl = window.location.origin + "/mvt/webgl_world/" + layerName + "/{z}/{x}/{y}.pbf";
+                        localSource.tiles = [sourceUrl];
+                    }
+
+                    // Replace the source matching the schema
+                    if (style.sources["protomaps"]) {
+                        style.sources["protomaps"] = localSource;
+                    } else if (style.sources["carto"]) {
+                        style.sources["carto"] = localSource;
+                    } else if (style.sources["openmaptiles"]) {
+                        style.sources["openmaptiles"] = localSource;
+                    }
+
+                    // Adapt Protomaps property schema automatically based on PMTiles metadata (v4-alpha pmap:* vs v4 unprefixed)
+                    if (isPmtiles) {
+                        var usesPmapPrefix = targetLayer && targetLayer.pmap_prefix !== undefined
+                            ? Boolean(targetLayer.pmap_prefix)
+                            : (layerName === "planet_2024_pmtiles_z12");
+                        let styleStr = JSON.stringify(style);
+                        if (!usesPmapPrefix) {
+                            styleStr = styleStr.replace(/"pmap:kind"/g, '"kind"');
+                            styleStr = styleStr.replace(/"pmap:kind_detail"/g, '"kind_detail"');
+                            styleStr = styleStr.replace(/"pmap:min_zoom"/g, '"min_zoom"');
+                            styleStr = styleStr.replace(/"pmap:population_rank"/g, '"population_rank"');
+                        }
+                        style = JSON.parse(styleStr);
+                    }
+
+                    return style;
+                }, function(fetchErr) {
+                    console.error("Failed to load style:", fetchErr);
+                    reportError("STYLE LOAD ERROR", fetchErr);
+                    return null;
+                })
+                .then(function(style) {
+                    if (style) {
+                        callback(style);
+                    }
+                })
+                .catch(function(callbackErr) {
+                    console.error("Map callback error:", callbackErr);
+                    reportError("MAP INIT ERROR", callbackErr);
+                });
+        }
+
+        function initMap() {
+            var select = document.getElementById('style-select');
+            if (!select.value) {
+                console.error("No style selected!");
+                return;
+            }
+            destroyAllMaps();
+
+            if (usingFallback) {
+                initServerFallback(select.value, null);
+                return;
+            }
+            
+            loadStyle(select.value, function(style) {
+                var miniStyle = JSON.parse(JSON.stringify(style));
+                try {
+                    map = new maplibregl.Map({
+                        container: 'map',
+                        style: style,
+                        center: [0, 0], 
+                        zoom: 4,
+                        hash: true
+                    });
+                } catch (webglErr) {
+                    console.warn("WebGL initialization failed, switching to server-rendered fallback:", webglErr);
+                    initServerFallback(select.value, webglErr);
+                    return;
+                }
+
+                // Track map errors immediately
+                map.on('error', function(e) {
+                    if (e && e.error) {
+                        reportError("MAP ERROR", e.error);
+                    }
+                });
+
+                map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+
+                // Auto-fit regional PMTiles extracts if current center is outside the archive bounds
+                var regBounds = getRegionalBounds(targetLayer);
+                if (regBounds) {
+                    var c = map.getCenter();
+                    if (!isPointInBounds(c.lng, c.lat, regBounds)) {
+                        map.fitBounds(
+                            [[regBounds[0], regBounds[1]], [regBounds[2], regBounds[3]]],
+                            { padding: 40, maxZoom: dynamicMaxZoom || 14, duration: 0 }
+                        );
+                    }
+                }
+                
+                // Coordinates display
+                map.on('mousemove', function (e) {
+                    document.getElementById('coords').innerHTML = 
+                        "Lat: " + e.lngLat.lat.toFixed(4) + ", Lon: " + e.lngLat.lng.toFixed(4);
+                });
+                
+                // Minimap (isolated so secondary WebGL context limits cannot break the main map)
+                try {
+                    minimap = new maplibregl.Map({
+                        container: 'minimap',
+                        style: miniStyle,
+                        center: map.getCenter(),
+                        zoom: Math.max(0, map.getZoom() - 6),
+                        interactive: false,
+                        attributionControl: false
+                    });
+                    
+                    // Sync minimap to main map
+                    map.on('move', function() {
+                        if (minimap) {
+                            minimap.jumpTo({
+                                center: map.getCenter(),
+                                zoom: Math.max(0, map.getZoom() - 6),
+                                bearing: map.getBearing(),
+                                pitch: map.getPitch()
+                            });
+                        }
+                    });
+                } catch (miniErr) {
+                    console.warn("Minimap WebGL context unavailable:", miniErr);
+                    document.getElementById('minimap').style.display = 'none';
+                }
+            });
+        }
+
+        window.changeStyle = function(styleUrl) {
+            if (usingFallback && fallbackMap) {
+                var theme = styleUrlToTileServerTheme(styleUrl);
+                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png';
+                if (fallbackTileLayer) fallbackTileLayer.setUrl(tileUrl);
+                if (fallbackMiniLayer) fallbackMiniLayer.setUrl(tileUrl);
+                return;
+            }
+            loadStyle(styleUrl, function(style) {
+                var miniStyle = JSON.parse(JSON.stringify(style));
+                if (map) map.setStyle(style);
+                if (minimap) minimap.setStyle(miniStyle);
+            });
+        };
+
+        window.changeLayer = function(newLayerName) {
+            layerName = newLayerName;
+            
+            var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?layer=' + layerName + window.location.hash;
+            window.history.pushState({path:newurl},'',newurl);
+
+            setupState();
+            setupDropdowns();
+            initMap();
+        };
+
+        window.showIntegration = function() {
+            var sourceUrl = "";
+            var integrationText = "";
+            if (isPmtiles) {
+                var filepath = targetLayer.path;
+                sourceUrl = "pmtiles://" + window.location.origin + "/data/" + filepath + "?v=" + new Date().getTime();
+                integrationText = `// Remember to register the PMTiles protocol first!
+// maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
+
+"sources": {
+  "protomaps": {
+    "type": "vector",
+    "url": "${sourceUrl}",
+    "maxzoom": ${dynamicMaxZoom}
+  }
+}`;
+            } else {
+                sourceUrl = window.location.origin + "/mvt/webgl_world/" + layerName + "/{z}/{x}/{y}.pbf";
+                integrationText = `"sources": {
+  "openmaptiles": {
+    "type": "vector",
+    "tiles": ["${sourceUrl}"],
+    "maxzoom": ${dynamicMaxZoom}
+  }
+}`;
+            }
+            
+            document.getElementById('integrationCode').innerText = integrationText;
+            document.getElementById('integrationModal').style.display = 'block';
+        };
+    </script>
+</body>
+</html>

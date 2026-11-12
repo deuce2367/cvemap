@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+        var err = document.createElement('div');
+        err.style = "background:red;color:white;padding:10px;z-index:9999;position:fixed;top:0;left:0;right:0;";
+        err.innerText = msg + " at " + lineNo + ":" + columnNo;
+        document.body.appendChild(err);
+        return false;
+    };
+    window.addEventListener('unhandledrejection', function(event) {
+        var err = document.createElement('div');
+        err.style = "background:red;color:white;padding:10px;z-index:9999;position:fixed;top:50px;left:0;right:0;";
+        err.innerText = "Unhandled Rejection: " + (event.reason ? event.reason.message : "Unknown");
+        document.body.appendChild(err);
+    });
+</script>
+    <link rel="icon" type="image/svg+xml" href="/static/boulder.svg">
+    <title>CVE Lightweight MapServer Viewer</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="leaflet/dist/leaflet.css" />
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; }
+        #map { height: 100%; width: 100%; }
+        #topbar { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 240px; width: 240px; box-sizing: border-box; font-family: sans-serif; }
+        
+        select { margin-top: 5px; padding: 5px; width: 100%; font-size: 13px; margin-bottom: 10px; }
+        .btn { display: inline-block; margin-top: 10px; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
+        .btn:hover { background: #e0e0e0; }
+        .admin-link {
+            background: #eee;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-size: 14px;
+            margin-left: 10px;
+            border: 1px solid #ccc;
+        }
+        .admin-link:hover { background: #ddd; }
+        
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 60%; border-radius: 6px; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        .code-block { background: #f4f4f4; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; overflow-x: auto; border: 1px solid #ddd; margin-bottom:15px; }
+    </style>
+</head>
+<body>
+    <div id="integrationModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="document.getElementById('integrationModal').style.display='none'">&times;</span>
+        <h2>Client Integration Links</h2>
+        <p>Use these URLs to load the currently selected map directly into your GIS software (QGIS, ArcGIS, Leaflet, etc).</p>
+        
+        <h3>XYZ Tile Layer (Spherical Mercator)</h3>
+        <p>Standard XYZ tiles, pre-fused with all visible layers.</p>
+        <div class="code-block" id="xyzLink"></div>
+        
+        <h3>WMS GetMap Endpoint (EPSG:4326 & 3857)</h3>
+        <p>WMS Endpoint configured with all visible layers.</p>
+        <div class="code-block" id="wmsLink"></div>
+      </div>
+    </div>
+
+    <div id="topbar">
+        <div style="text-align: center; margin-bottom: 5px;">
+            <img src="/static/sisyphus_logo.jpg" style="max-width: 160px; border-radius: 8px;">
+        </div>
+        <h3 style="margin-top: 0; text-align: center;">Legacy Viewer</h3>
+        <p style="font-size: 13px; color: #555;">Rendering WMS & XYZ via MapServer.</p>
+
+        <label for="map-select" style="font-size: 12px; font-weight: bold;">Data Source:</label>
+        <select id="map-select" onchange="loadMap(this.value)">
+            <option value="">Loading maps...</option>
+        </select>
+
+        <div id="ts-style-wrap" style="display: none;">
+            <label for="ts-style-select" style="font-size: 12px; font-weight: bold;">Map Style:</label>
+            <select id="ts-style-select" onchange="updateFormat()"></select>
+        </div>
+
+        <label for="format-select" style="font-size: 12px; font-weight: bold;">Rendering Engine:</label>
+        <select id="format-select" onchange="updateFormat()">
+            <option value="xyz">XYZ (Native)</option>
+            <option value="wms">WMS (Fused)</option>
+        </select>
+
+        <button class="btn" onclick="showIntegrationLinks()">🔗 Integration Links</button>
+        <a href="/admin" class="btn" style="margin-top: 5px;">⚙️ Admin Panel</a>
+        <a href="/modern" class="btn" style="color: #007bff; border-color: #007bff; background: white; margin-top: 5px;">WebGL Map &rarr;</a>
+    </div>
+    
+    <div id="map"></div>
+    
+    <script src="leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map', {
+            zoomControl: false,
+            wheelPxPerZoomLevel: 120,
+            zoomDelta: 1,
+            zoomSnap: 1,
+            worldCopyJump: true,
+            minZoom: 1,
+        }).setView([0, 0], 4);
+        L.control.zoom({ position: 'topright' }).addTo(map);
+        var currentControl = null;
+        var currentLayers = [];
+
+        // UI Elements
+        var coordsDiv = document.createElement('div');
+        coordsDiv.style.cssText = "position:absolute; bottom:25px; right:10px; z-index:1000; background:rgba(255,255,255,0.8); padding:5px 10px; border-radius:4px; font-family:'Courier New', Courier, monospace; font-size:11px; box-shadow:0 1px 5px rgba(0,0,0,0.4); pointer-events:none;";
+        document.body.appendChild(coordsDiv);
+
+        var minimapDiv = document.createElement('div');
+        minimapDiv.id = 'minimap';
+        minimapDiv.style.cssText = "position:absolute; bottom:10px; left:10px; z-index:1000; width:300px; height:150px; border:2px solid #ccc; border-radius:4px; box-shadow:0 1px 5px rgba(0,0,0,0.4); background:white;";
+        document.body.appendChild(minimapDiv);
+
+        var minimap = L.map('minimap', {
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            touchZoom: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            minZoom: 0,
+            boxZoom: false
+        }).setView([20, 0], 0);
+        var minimapLayer = null;
+        var minimapOverlays = [];
+        var minimapRect = L.rectangle([[-90, -180], [90, 180]], {color: "#ff0000", weight: 2, fillOpacity: 0.1}).addTo(minimap);
+        
+        function updateMinimap() {
+            if (minimapRect) {
+                var center = map.getCenter().wrap();
+                var b = map.getBounds();
+                var sw = b.getSouthWest().wrap();
+                var ne = b.getNorthEast().wrap();
+                
+                // If it crossed the dateline after wrapping, just clamp it or let it span
+                if (sw.lng > ne.lng) {
+                    ne.lng += 360; // Keep the box intact visually on the minimap
+                }
+                minimapRect.setBounds(L.latLngBounds(sw, ne));
+                minimapRect.bringToFront();
+            }
+            var targetZoom = Math.max(1, map.getZoom() - 4);
+            if (minimapLayer && minimapLayer.options.minNativeZoom !== undefined) {
+                targetZoom = Math.max(targetZoom, minimapLayer.options.minNativeZoom);
+            }
+            minimap.setView(center, targetZoom, {animate: false});
+
+        }
+        
+        map.on('move', updateMinimap);
+        map.on('zoom', updateMinimap);
+
+
+
+        var noDataSvg = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="rgba(0,0,0,0.05)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/><text x="128" y="128" font-family="sans-serif" font-size="16" font-weight="bold" fill="#333" text-anchor="middle" dominant-baseline="middle">No Data</text></svg>');
+
+        var mapsData = {};
+        var mapsSettings = {};
+        var tileserverStyles = ['bio', 'light', 'dark', 'grayscale', 'white', 'black', 'black_and_white', 'dusk_rose', 'flat', 'iris_bloom', 'rainforest', 'seafoam', 'sol'];
+
+        function resolveClientTileUrl(externalUrl) {
+            if (!externalUrl) return '';
+            // Route TileServer URLs through same-origin /tileserver/ proxy so only port 8000 is needed
+            var rewritten = externalUrl.replace(/^https?:\/\/\{HOST\}(?::\d+)?\//, '/tileserver/');
+            return rewritten.replace('{HOST}', window.location.hostname);
+        }
+
+        async function init() {
+            try {
+                const res = await fetch('/api/maps');
+                const data = await res.json();
+                mapsData = data.maps || data;
+                mapsSettings = data.settings || {reference_map: 'current'};
+                if (Array.isArray(data.tileserver_styles) && data.tileserver_styles.length > 0) {
+                    tileserverStyles = data.tileserver_styles;
+                }
+                
+                const select = document.getElementById('map-select');
+                select.innerHTML = '';
+                
+                var mapKeys = Object.keys(mapsData)
+                    .filter(id => !id.startsWith('webgl'))
+                    .sort((a, b) => (mapsData[a].title || a).localeCompare(mapsData[b].title || b));
+                
+                for (const mapId of mapKeys) {
+                    const mapInfo = mapsData[mapId];
+                    const opt = document.createElement('option');
+                    opt.value = mapId;
+                    opt.innerText = mapInfo.title || mapId;
+                    select.appendChild(opt);
+                }
+                
+                if (mapKeys.length > 0) {
+                    window.mapsConfig = mapsData;
+                    loadMap(mapKeys[0]);
+                } else {
+                    select.innerHTML = '<option>No maps available</option>';
+                }
+            } catch(e) {
+                console.error("Error loading maps", e);
+            }
+        }
+
+        function syncTileServerStyleDropdown(mapId, mapInfo) {
+            var wrap = document.getElementById('ts-style-wrap');
+            var sel = document.getElementById('ts-style-select');
+            if (mapId !== 'tileserver_raster') {
+                wrap.style.display = 'none';
+                return null;
+            }
+            wrap.style.display = 'block';
+            if (sel.options.length === 0) {
+                var defaultStyle = 'bio';
+                var firstEnabled = (mapInfo.layers || []).find(l => l.enabled);
+                if (firstEnabled && firstEnabled.name) defaultStyle = firstEnabled.name;
+                sel.innerHTML = '';
+                tileserverStyles.forEach(st => {
+                    var opt = document.createElement('option');
+                    opt.value = st;
+                    opt.innerText = st.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    if (st === defaultStyle) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            }
+            return sel.value || 'bio';
+        }
+
+        function loadMap(mapId) {
+            const mapInfo = window.mapsConfig[mapId];
+            if (!mapInfo) return;
+
+            currentLayers.forEach(l => map.removeLayer(l));
+            currentLayers = [];
+            if (currentControl) {
+                map.removeControl(currentControl);
+            }
+            if (minimapLayer) {
+                minimap.removeLayer(minimapLayer);
+            }
+            minimapOverlays.forEach(l => minimap.removeLayer(l));
+            minimapOverlays = [];
+
+            if (mapInfo.bg_color) {
+                var bgParts = Array.isArray(mapInfo.bg_color) ? mapInfo.bg_color.join(',') : String(mapInfo.bg_color).split(' ').join(',');
+                document.getElementById('map').style.backgroundColor = 'rgb(' + bgParts + ')';
+            } else {
+                document.getElementById('map').style.backgroundColor = '#e0e0e0';
+            }
+
+            var selectedTsStyle = syncTileServerStyleDropdown(mapId, mapInfo);
+            var format = document.getElementById('format-select').value;
+            
+            var allActiveLayers = selectedTsStyle
+                ? [selectedTsStyle]
+                : mapInfo.layers.filter(l => l.enabled).map(l => l.name).reverse();
+            var xyzActiveLayers = selectedTsStyle
+                ? []
+                : mapInfo.layers.filter(l => l.enabled && !l.is_mbtiles).map(l => l.name).reverse();
+            
+            var wmsLayersStr = allActiveLayers.length > 0 ? allActiveLayers.join(',') : 'none';
+            var xyzLayersStr = xyzActiveLayers.length > 0 ? xyzActiveLayers.join(',') : 'none';
+
+            var ts = Date.now();
+
+            if (format === 'wms') {
+                if (allActiveLayers.length > 0) {
+                    var wmsLayer = L.tileLayer.wms('/wms/' + mapId + '?t=' + ts, {
+                        layers: wmsLayersStr,
+                        format: 'image/png',
+                        transparent: true,
+                        tileSize: selectedTsStyle ? 512 : 1024,
+                        attribution: 'MapServer WMS'
+                    });
+                    wmsLayer.addTo(map);
+                    currentLayers.push(wmsLayer);
+                }
+            } else if (selectedTsStyle) {
+                var tsUrl = '/tileserver/styles/' + selectedTsStyle + '/{z}/{x}/{y}.png';
+                var tsLayer = L.tileLayer(tsUrl, {
+                    minZoom: 0,
+                    maxZoom: 18,
+                    maxNativeZoom: 18,
+                    errorTileUrl: noDataSvg,
+                    attribution: 'TileServer GL (' + selectedTsStyle + ')'
+                });
+                tsLayer.addTo(map);
+                currentLayers.push(tsLayer);
+            } else {
+                // XYZ Mode: Add MBTiles directly
+                mapInfo.layers.filter(l => l.enabled && l.is_mbtiles).forEach(l => {
+                    var tileUrl = l.external_url ? resolveClientTileUrl(l.external_url) : '/xyz/' + mapId + '/' + l.name + '/{z}/{x}/{y}.png?t=' + ts;
+                    var mbtilesLayer = L.tileLayer(tileUrl, {
+                        minZoom: l.minZoom !== undefined ? l.minZoom : 1,
+                        maxZoom: 18,
+                        maxNativeZoom: l.external_url ? 18 : (l.maxZoom || 18),
+                        errorTileUrl: noDataSvg,
+                        attribution: l.name
+                    });
+                    mbtilesLayer.addTo(map);
+                    currentLayers.push(mbtilesLayer);
+                });
+                
+                // Add remaining layers via MapServer XYZ
+                if (xyzActiveLayers.length > 0) {
+                    var xyzLayer = L.tileLayer('/xyz/' + mapId + '/' + xyzLayersStr + '/{z}/{x}/{y}.png?t=' + ts, {
+                        maxZoom: 18,
+                        errorTileUrl: noDataSvg,
+                        attribution: 'MapServer XYZ'
+                    });
+                    xyzLayer.addTo(map);
+                    currentLayers.push(xyzLayer);
+                }
+            }
+            // Minimap logic
+            var refMapId = (mapsSettings.reference_map && mapsSettings.reference_map !== 'current') ? mapsSettings.reference_map : mapId;
+            var refMapInfo = window.mapsConfig[refMapId] || mapInfo;
+            var refActiveLayers = refMapInfo.layers.filter(l => l.enabled && !l.is_mbtiles);
+            var refMbtilesLayers = refMapInfo.layers.filter(l => l.enabled && l.is_mbtiles);
+            var minimapUrl = '/xyz/' + refMapId + '/all/{z}/{x}/{y}.png';
+            var minimapMinZoom = 0;
+            var minimapMaxNativeZoom = 18;
+            if (refMapId === 'tileserver_raster') {
+                var miniStyle = selectedTsStyle || 'bio';
+                minimapUrl = '/tileserver/styles/' + miniStyle + '/{z}/{x}/{y}.png';
+                minimapMinZoom = 0;
+                minimapMaxNativeZoom = 18;
+            } else if (refActiveLayers.length === 0 && refMbtilesLayers.length > 0) {
+                minimapUrl = refMbtilesLayers[0].external_url ? resolveClientTileUrl(refMbtilesLayers[0].external_url) : '/xyz/' + refMapId + '/' + refMbtilesLayers[0].name + '/{z}/{x}/{y}.png';
+                minimapMinZoom = refMbtilesLayers[0].minZoom !== undefined ? refMbtilesLayers[0].minZoom : 1;
+                minimapMaxNativeZoom = refMbtilesLayers[0].external_url ? 18 : (refMbtilesLayers[0].maxZoom || 18);
+            }
+            
+            minimapLayer = L.tileLayer(minimapUrl, {
+                maxZoom: 18,
+                maxNativeZoom: minimapMaxNativeZoom,
+                minNativeZoom: minimapMinZoom,
+                errorTileUrl: noDataSvg
+            }).addTo(minimap);
+
+            
+            updateMinimap();
+
+            // Minimap overlays
+            if (refMapId !== 'tileserver_raster') {
+                refMapInfo.layers.forEach(l => {
+                    if (l.is_mbtiles && l.enabled) {
+                        var tileUrl = l.external_url ? resolveClientTileUrl(l.external_url) : '/xyz/' + refMapId + '/' + l.name + '/{z}/{x}/{y}.png';
+                        var miniMbtiles = L.tileLayer(tileUrl, {
+                            minZoom: l.minZoom !== undefined ? l.minZoom : 1,
+                            maxZoom: 18,
+                            maxNativeZoom: l.external_url ? 18 : (l.maxZoom || 18),
+                            errorTileUrl: noDataSvg
+                        }).addTo(minimap);
+                        minimapOverlays.push(miniMbtiles);
+                    }
+                });
+            }
+
+            // Removed L.control.layers
+        }
+        
+        function updateFormat() {
+            var mapId = document.getElementById('map-select').value;
+            if (mapId) loadMap(mapId);
+        }
+
+        function showIntegrationLinks() {
+            var mapId = document.getElementById('map-select').value;
+            if (!mapId || !window.mapsConfig || !window.mapsConfig[mapId]) return;
+            
+            var mapInfo = window.mapsConfig[mapId];
+            var activeLayers = (mapId === 'tileserver_raster')
+                ? [document.getElementById('ts-style-select').value || 'bio']
+                : mapInfo.layers.filter(l => l.enabled).map(l => l.name).reverse();
+            var layersStr = activeLayers.length > 0 ? activeLayers.join(',') : 'none';
+            
+            var host = window.location.protocol + "//" + window.location.host;
+            
+            var xyzLayerPath = (mapId === 'tileserver_raster') ? activeLayers[0] : 'all';
+            var xyzUrl = host + "/xyz/" + mapId + "/" + xyzLayerPath + "/{z}/{x}/{y}.png";
+            document.getElementById('xyzLink').innerText = xyzUrl;
+            
+            var wmsUrl = host + "/wms/" + mapId + "?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + layersStr + "&FORMAT=image/png&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256";
+            document.getElementById('wmsLink').innerText = wmsUrl;
+            
+            document.getElementById('integrationModal').style.display = 'block';
+        }
+
+        function updateCoords(e) {
+            var z = map.getZoom();
+            var text = 'Zoom: ' + z;
+            if (e) {
+                text += '&nbsp;&nbsp;Lat: ' + e.latlng.lat.toFixed(4) + '&nbsp;&nbsp;Lon: ' + e.latlng.lng.toFixed(4);
+            } else {
+                var center = map.getCenter();
+                text += '&nbsp;&nbsp;Lat: ' + center.lat.toFixed(4) + '&nbsp;&nbsp;Lon: ' + center.lng.toFixed(4);
+            }
+            coordsDiv.innerHTML = text;
+        }
+
+        map.on('mousemove', updateCoords);
+        map.on('zoomend', function() { updateCoords(); });
+
+        map.on('move', function() {
+            minimap.setView(map.getCenter(), Math.max(0, map.getZoom() - 4));
+            updateCoords();
+        });
+
+        init();
+    </script>
+</body>
+</html>

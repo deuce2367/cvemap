@@ -1,0 +1,31 @@
+{
+  "options": {
+    "paths": {
+      "root": "",
+      "fonts": "/data/fonts",
+      "sprites": "/data/sprites",
+      "styles": "/data/styles",
+      "mbtiles": "/data/data"
+    }
+  },
+  "styles": {
+    "bio": { "style": "bio.json" },
+    "black": { "style": "black.json" },
+    "black_and_white": { "style": "black_and_white.json" },
+    "dark": { "style": "dark.json" },
+    "dusk_rose": { "style": "dusk_rose.json" },
+    "flat": { "style": "flat.json" },
+    "grayscale": { "style": "grayscale.json" },
+    "iris_bloom": { "style": "iris_bloom.json" },
+    "light": { "style": "light.json" },
+    "rainforest": { "style": "rainforest.json" },
+    "seafoam": { "style": "seafoam.json" },
+    "sol": { "style": "sol.json" },
+    "white": { "style": "white.json" }
+  },
+  "data": {
+    "planet": {
+      "pmtiles": "/data/data/planet-2024-z12.pmtiles"
+    }
+  }
+}

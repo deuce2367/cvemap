@@ -1,0 +1,54 @@
+# Map data files & runtime data directory
+*.pmtiles
+*.mbtiles
+*.shp
+*.shx
+*.dbf
+*.fgb
+*.gpkg
+*.osm.pbf
+*.img
+*.tar
+*.tar.gz
+*.zip
+*.jar
+/app/data/*
+!/app/data/.gitkeep
+!/app/data/legacy/
+/app/data/legacy/*
+!/app/data/legacy/world/
+/app/data/legacy/world/*
+!/app/data/legacy/world/capitals.fgb
+!/app/data/legacy/world/cities_large.fgb
+!/app/data/legacy/world/countries.fgb
+/sources/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Node
+node_modules/
+package-lock.json
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temp & generated files
+.DS_Store
+/data/
+/bin/
+/.build_stage_data/
+pmtiles
+tmp_tile.mbtiles
+app/data/.gdal_wms_*.xml
+app/data/tileserver_raster.map
+basemaps/tiles/target/

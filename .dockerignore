@@ -1,0 +1,12 @@
+.git
+/data/
+/basemaps/
+/bin/
+/pmtiles
+/tmp_tile.mbtiles
+*.log
+**/__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/

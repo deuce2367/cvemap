@@ -1,0 +1,35 @@
+FROM python:3.11-alpine
+
+# Add edge and testing repos for mapserver
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+    echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    apk update && \
+    apk add --no-cache mapserver gdal gdal-driver-png gdal-driver-jpeg gdal-tools sqlite proj proj-util bash
+
+WORKDIR /app
+
+COPY Lato-Regular.ttf /usr/share/fonts/truetype/Lato-Regular.ttf
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && \
+    python -m pip uninstall -y pip setuptools wheel
+
+# Create user BEFORE copying
+RUN addgroup -g 1000 cvemap && \
+    adduser -u 1000 -G cvemap -s /bin/bash -D cvemap && \
+    chown -R cvemap:cvemap /home/cvemap
+
+# Copy all files directly as the cvemap user to avoid chown size doubling!
+COPY --chown=cvemap:cvemap . .
+
+# Create ASCII art and bash profile using printf to ensure correct escape sequences
+RUN printf '\033[1;36m         _          ________\n        / \_       /        \\\n        \ /       /          \\\n        /_______//            \\\n       /________/|            |                       ||||||||\n      /          |            |                  |||||\n     /           |            |          ||||||||\n    / \           \          /   ||||||||\n    |  \            \______/|||||\n    |   |       ||||||||||||\n   /    |_ |||||\n  /_  |||||\n||||||\n\033[0m\n' > /home/cvemap/.motd && \
+    echo 'cat /home/cvemap/.motd' > /home/cvemap/.bashrc && \
+    echo 'PS1="\[\e[1;32m\]\u@cvemap\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ "' >> /home/cvemap/.bashrc && \
+    chown cvemap:cvemap /home/cvemap/.motd /home/cvemap/.bashrc
+
+USER 1000:1000
+EXPOSE 8000
+
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000"]
