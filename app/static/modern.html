@@ -303,7 +303,7 @@
                 destroyAllMaps();
                 var hv = parseHashView() || { zoom: 4, lat: 0, lng: 0 };
                 var theme = styleUrlToTileServerTheme(styleUrl);
-                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png';
+                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=2';
 
                 fallbackMap = L.map('map', {
                     zoomControl: false,
@@ -433,6 +433,7 @@
                             : (layerName === "planet_2024_pmtiles_z12");
                         let styleStr = JSON.stringify(style);
                         if (!usesPmapPrefix) {
+                            styleStr = styleStr.replace(/"pmap:min_admin_level"/g, '"kind_detail"');
                             styleStr = styleStr.replace(/"pmap:kind"/g, '"kind"');
                             styleStr = styleStr.replace(/"pmap:kind_detail"/g, '"kind_detail"');
                             styleStr = styleStr.replace(/"pmap:min_zoom"/g, '"min_zoom"');
@@ -546,7 +547,7 @@
         window.changeStyle = function(styleUrl) {
             if (usingFallback && fallbackMap) {
                 var theme = styleUrlToTileServerTheme(styleUrl);
-                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png';
+                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=2';
                 if (fallbackTileLayer) fallbackTileLayer.setUrl(tileUrl);
                 if (fallbackMiniLayer) fallbackMiniLayer.setUrl(tileUrl);
                 return;

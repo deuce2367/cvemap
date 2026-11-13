@@ -71,7 +71,9 @@ def adapt_style_schema(style_obj: dict, pmap_prefix: bool) -> dict:
     if pmap_prefix:
         # Base styles use pmap:kind / pmap:kind_detail / pmap:min_zoom / pmap:population_rank
         return json.loads(text)
-    # Modern Protomaps v4+ uses unprefixed kind, kind_detail, min_zoom, population_rank
+    # Modern Protomaps v4+ uses unprefixed kind, kind_detail, min_zoom, population_rank,
+    # and stores boundary admin levels in numeric kind_detail instead of pmap:min_admin_level
+    text = text.replace('"pmap:min_admin_level"', '"kind_detail"')
     text = text.replace('"pmap:kind"', '"kind"')
     text = text.replace('"pmap:kind_detail"', '"kind_detail"')
     text = text.replace('"pmap:min_zoom"', '"min_zoom"')

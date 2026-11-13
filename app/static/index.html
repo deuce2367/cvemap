@@ -283,7 +283,7 @@
                     currentLayers.push(wmsLayer);
                 }
             } else if (selectedTsStyle) {
-                var tsUrl = '/tileserver/styles/' + selectedTsStyle + '/{z}/{x}/{y}.png';
+                var tsUrl = '/tileserver/styles/' + selectedTsStyle + '/{z}/{x}/{y}.png?v=2';
                 var tsLayer = L.tileLayer(tsUrl, {
                     minZoom: 0,
                     maxZoom: 18,
@@ -329,7 +329,7 @@
             var minimapMaxNativeZoom = 18;
             if (refMapId === 'tileserver_raster') {
                 var miniStyle = selectedTsStyle || 'bio';
-                minimapUrl = '/tileserver/styles/' + miniStyle + '/{z}/{x}/{y}.png';
+                minimapUrl = '/tileserver/styles/' + miniStyle + '/{z}/{x}/{y}.png?v=2';
                 minimapMinZoom = 0;
                 minimapMaxNativeZoom = 18;
             } else if (refActiveLayers.length === 0 && refMbtilesLayers.length > 0) {
