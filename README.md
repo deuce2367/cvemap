@@ -13,12 +13,15 @@ cd cvemap
 ```
 
 ### 2. Download Map Data
-Use `./download_map_data.sh` to fetch ready-to-serve Protomaps `.pmtiles` vector basemaps (auto-bootstraps the `go-pmtiles` CLI if not installed), legacy Natural Earth vector layers, or Geofabrik `.osm.pbf` extracts:
+Use `./download_map_data.sh` to fetch ready-to-serve Protomaps `.pmtiles` vector basemaps (auto-bootstraps the `go-pmtiles` CLI if not installed), optional Natural Earth Shapefiles, or Geofabrik `.osm.pbf` extracts. If `--region` is omitted, it defaults to **`planet`**:
 
 ```bash
-# See all options and built-in region presets
+# Detailed guide explaining every option & workflow
 ./download_map_data.sh --help
 ./download_map_data.sh --list-regions
+
+# Default: Full global planet basemap (zoom 0-12, ~15 GB)
+./download_map_data.sh
 
 # Quick test region (~2 MB, downloads in a few seconds)
 ./download_map_data.sh --region monaco
@@ -29,9 +32,6 @@ Use `./download_map_data.sh` to fetch ready-to-serve Protomaps `.pmtiles` vector
 
 # Custom bounding box (minLon,minLat,maxLon,maxLat)
 ./download_map_data.sh --bbox -77.25,38.79,-76.90,39.02 --maxzoom 14 --name dc_metro
-
-# Full global basemap (zoom 0-12, ~15 GB)
-./download_map_data.sh --region planet --maxzoom 12
 ```
 
 > Any `.pmtiles`, `.mbtiles`, `.shp`, `.fgb`, or `.geojson` placed under `app/data/` is **automatically discovered** on startup—no manual `config.json` editing required.
@@ -52,13 +52,16 @@ Both targets run **all software** (MapServer CGI, FastAPI, Xvfb, and TileServer-
 
 *(Or directly via Docker BuildKit: `docker build --target lite -t cvemap:lite .` / `docker build --target full -t cvemap:full .`)*
 
-### 4. Launch CVEMAP
+### 4. Launch & Stop CVEMAP
 ```bash
 # Run cvemap:lite (mounts ./app/data at runtime)
 ./launch_cvemap.sh
 
 # Or run cvemap:full standalone (no volume mounts required)
 ./launch_cvemap.sh --full
+
+# Stop the running CVEMAP server container
+./stop_cvemap.sh
 ```
 
 ---

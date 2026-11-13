@@ -72,7 +72,7 @@
         <h3 style="margin-top: 0; text-align: center;">Legacy Viewer</h3>
         <p style="font-size: 13px; color: #555;">Rendering WMS & XYZ via MapServer.</p>
 
-        <label for="map-select" style="font-size: 12px; font-weight: bold;">Data Source:</label>
+        <label for="map-select" style="font-size: 12px; font-weight: bold;">Map Dataset:</label>
         <select id="map-select" onchange="loadMap(this.value)">
             <option value="">Loading maps...</option>
         </select>
@@ -82,10 +82,10 @@
             <select id="ts-style-select" onchange="updateFormat()"></select>
         </div>
 
-        <label for="format-select" style="font-size: 12px; font-weight: bold;">Rendering Engine:</label>
+        <label for="format-select" style="font-size: 12px; font-weight: bold;">Tile Protocol:</label>
         <select id="format-select" onchange="updateFormat()">
-            <option value="xyz">XYZ (Native)</option>
-            <option value="wms">WMS (Fused)</option>
+            <option value="xyz">XYZ (Slippy Tiles)</option>
+            <option value="wms">WMS (OGC GetMap)</option>
         </select>
 
         <button class="btn" onclick="showIntegrationLinks()">🔗 Integration Links</button>

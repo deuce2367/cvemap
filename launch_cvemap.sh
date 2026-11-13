@@ -52,13 +52,13 @@ while [ "$#" -gt 0 ]; do
 done
 
 # Stop any existing unified or legacy split containers
-docker stop "${CONTAINER_NAME}" cvemap-dev tileserver 2>/dev/null || true
-docker rm "${CONTAINER_NAME}" cvemap-dev tileserver 2>/dev/null || true
-
 if [ "${STOP_ONLY}" = true ]; then
-  echo "Stopped CVEMAP containers."
+  "${SCRIPT_DIR}/stop_cvemap.sh" --name "${CONTAINER_NAME}"
   exit 0
 fi
+
+docker stop "${CONTAINER_NAME}" cvemap-dev tileserver 2>/dev/null || true
+docker rm "${CONTAINER_NAME}" cvemap-dev tileserver 2>/dev/null || true
 
 if [ -z "${IMAGE}" ]; then
   IMAGE="cvemap:${MODE}"

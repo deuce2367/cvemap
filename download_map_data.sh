@@ -46,46 +46,127 @@ declare -A REGION_PRESETS=(
 show_help() {
   cat <<'EOF'
 CVEMAP Map Data Downloader
+==========================
 
 Usage:
   ./download_map_data.sh [options]
 
-Examples:
-  # 1. Quick smoke-test map (~2 MB, downloads in seconds):
+  Running './download_map_data.sh' with no region or workflow flags defaults to
+  downloading the global Protomaps basemap ('--region planet', zoom 0-12, ~15 GB).
+
+--------------------------------------------------------------------------------
+WHICH WORKFLOW SHOULD I CHOOSE?
+--------------------------------------------------------------------------------
+  1. Protomaps PMTiles Basemap (DEFAULT - Recommended for almost everyone)
+     Slices a ready-to-serve '.pmtiles' vector archive directly from Protomaps'
+     daily OpenStreetMap builds into 'app/data/webgl/world/' (auto-downloads the
+     lightweight 'go-pmtiles' CLI if needed; no Java compilation required).
+     One '.pmtiles' file powers BOTH:
+       - Modern WebGL Vector Viewer (/modern)
+       - Legacy Raster XYZ & OGC WMS Viewer (/) via TileServer-GL + MapServer
+
+     Pick your geographic coverage:
+       * Default ('planet') : Full world basemap when --region/--bbox is omitted.
+       * '--region <name>'  : Pre-configured continent, country, or city extract
+                              (e.g. 'monaco' is ~2 MB for a 5-second smoke test).
+       * '--bbox <w,s,e,n>' : Custom lon/lat rectangle for a specific area of
+                              interest when no built-in preset fits.
+
+  2. Legacy Natural Earth Shapefiles ('--legacy-world' - Optional)
+     CVEMAP already ships with compact stock world layers (countries, cities,
+     and capitals in FlatGeobuf format) out of the box. Choose '--legacy-world'
+     only if you want additional Natural Earth '.shp' files with rich attribute
+     columns (ISO codes, population/GDP ranks) to build custom MapServer
+     choropleths or label classes in the '/admin' panel.
+
+  3. Raw OSM PBF + Planetiler ('--osm-pbf' & '--planetiler-sources' - Advanced)
+     NOT needed to run CVEMAP. These flags download raw OpenStreetMap '.osm.pbf'
+     dumps from Geofabrik and coastline/land auxiliary datasets into
+     'data/sources/' so you can compile custom vector tiles from scratch using
+     './build_custom_map.sh' (Java/Planetiler). Choose this only if you are
+     customizing the vector tile schema itself or have custom '.osm.pbf' inputs.
+
+--------------------------------------------------------------------------------
+CHOOSING '--maxzoom' (DETAIL vs. DOWNLOAD SIZE)
+--------------------------------------------------------------------------------
+  Each +1 zoom level roughly quadruples (~4x) archive size for a given area.
+  Viewers still let you zoom in past maxzoom by scaling the highest-zoom tiles.
+    z10  Regional / highway overview       (~1.5 GB for full planet)
+    z12  City, town & arterial road detail (~15 GB  for full planet - DEFAULT)
+    z13  Neighborhood & secondary streets  (default for large countries)
+    z14  Street-level & building footprints (default for metro presets; ~60 GB+ planet)
+    z15  Finest building & POI detail       (default for tiny presets like monaco)
+
+--------------------------------------------------------------------------------
+OPTIONS
+--------------------------------------------------------------------------------
+  Protomaps PMTiles Options (default workflow):
+    --region <name>          Named geographic preset to extract into
+                             app/data/webgl/world/. Defaults to 'planet' if
+                             neither --region, --bbox, nor another workflow flag
+                             is specified. Run --list-regions to see all presets.
+    --bbox <w,s,e,n>         Extract a custom bounding box instead of a named
+                             preset, formatted as minLon,minLat,maxLon,maxLat in
+                             WGS84 degrees (e.g. -77.25,38.79,-76.90,39.02).
+    --list-regions           Print all built-in --region presets with their
+                             bounding boxes and default maxzoom, then exit.
+    --maxzoom <0-15>         Maximum tile zoom level to include. Overrides the
+                             preset's default (z12 for planet/continents, z13-15
+                             for countries/cities). Lower = much smaller file.
+    --name <filename>        Custom output filename in app/data/webgl/world/
+                             (e.g. 'dc_metro' -> dc_metro.pmtiles). Defaults to
+                             '<region>-z<maxzoom>.pmtiles'.
+    --build-date <YYYYMMDD>  Pin a specific Protomaps daily build date instead of
+                             auto-detecting the latest published build. Useful
+                             for reproducible team/offline builds.
+    --source-url <url>       Extract from a custom remote or local PMTiles URL/path
+                             instead of https://build.protomaps.com/.
+
+  Optional Legacy MapServer Layers:
+    --legacy-world           Download Natural Earth 1:110m countries & 1:50m
+                             populated places Shapefiles into app/data/legacy/world/
+                             for direct MapServer vector styling in /admin.
+
+  Advanced Custom Tile Compilation Inputs (for ./build_custom_map.sh):
+    --osm-pbf <geofabrik>    Download a raw Geofabrik OpenStreetMap extract into
+                             data/sources/ (e.g. 'europe/monaco', 'north-america/us/california').
+                             Does NOT immediately appear in CVEMAP until compiled
+                             with ./build_custom_map.sh.
+    --planetiler-sources     Pre-download auxiliary coastline, water polygon,
+                             Natural Earth, and Wikidata QRank archives (~2.5 GB)
+                             into data/sources/ required by Planetiler builds.
+
+  General Options:
+    --data-dir <path>        Override target CVEMAP runtime data directory
+                             (default: ./app/data).
+    --dry-run                Print the resolved URLs and commands that would be
+                             executed without downloading any files.
+    -h, --help               Show this help guide and exit.
+
+--------------------------------------------------------------------------------
+EXAMPLES
+--------------------------------------------------------------------------------
+  # 1. Default: Full global planet basemap (zoom 0-12, ~15 GB):
+  ./download_map_data.sh
+
+  # 2. Lighter global planet basemap (zoom 0-10, ~1.5 GB):
+  ./download_map_data.sh --maxzoom 10
+
+  # 3. Fast smoke-test extract (~2 MB, finishes in seconds):
   ./download_map_data.sh --region monaco
 
-  # 2. Regional vector basemap (serves both WebGL Viewer & TileServer-GL raster/WMS):
+  # 4. High-detail metro or regional basemap:
   ./download_map_data.sh --region sf-bay --maxzoom 14
   ./download_map_data.sh --region europe --maxzoom 12
 
-  # 3. Custom bounding box (minLon,minLat,maxLon,maxLat):
+  # 5. Custom bounding box (Washington, D.C. metro area):
   ./download_map_data.sh --bbox -77.25,38.79,-76.90,39.02 --maxzoom 14 --name dc_metro
 
-  # 4. Full global planet basemap (zoom 0-12, ~15 GB):
-  ./download_map_data.sh --region planet --maxzoom 12
-
-  # 5. Verify/download Legacy Natural Earth world vector layers:
+  # 6. Add optional Natural Earth Shapefiles for /admin choropleth styling:
   ./download_map_data.sh --legacy-world
 
-  # 6. Download raw Geofabrik OSM PBF + Planetiler sources for custom Java builds:
+  # 7. Advanced: Fetch raw OSM PBF + Planetiler inputs for custom Java builds:
   ./download_map_data.sh --osm-pbf europe/monaco --planetiler-sources
-
-Modes & Presets:
-  --region <name>          Extract a named region preset (see --list-regions)
-  --bbox <w,s,e,n>         Extract a custom bounding box (minLon,minLat,maxLon,maxLat)
-  --list-regions           List all built-in named region presets and exit
-  --legacy-world           Ensure Legacy Viewer world vector layers exist in app/data/legacy/world/
-  --osm-pbf <geofabrik>    Download a Geofabrik .osm.pbf (e.g. 'monaco', 'africa/madagascar')
-  --planetiler-sources     Download auxiliary datasets into data/sources/ for build_custom_map.sh
-
-PMTiles Extract Options:
-  --maxzoom <0-15>         Maximum zoom level (default: 12 for planet/continents, 14 for metro regions)
-  --name <filename>        Output name in app/data/webgl/world/ (default: auto-named from region)
-  --build-date <YYYYMMDD>  Specific Protomaps daily build date (default: auto-detect latest)
-  --source-url <url>       Override remote PMTiles archive URL
-  --data-dir <path>        Target CVEMAP data directory (default: ./app/data)
-  --dry-run                Show commands that would run without downloading files
-  -h, --help               Show this help message
 EOF
 }
 
@@ -233,20 +314,16 @@ download_planetiler_sources() {
   done
 }
 
-# Show help if invoked with no arguments
-if [ "$#" -eq 0 ]; then
-  show_help
-  exit 0
-fi
+PMTILES_OPT_SET=false
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --region)              REGION="$2"; shift 2 ;;
-    --bbox)                BBOX="$2"; shift 2 ;;
-    --maxzoom)             MAXZOOM="$2"; shift 2 ;;
-    --name|--output)       OUTPUT_NAME="$2"; shift 2 ;;
-    --build-date)          BUILD_DATE="$2"; shift 2 ;;
-    --source-url)          SOURCE_URL="$2"; shift 2 ;;
+    --region)              REGION="$2"; PMTILES_OPT_SET=true; shift 2 ;;
+    --bbox)                BBOX="$2"; PMTILES_OPT_SET=true; shift 2 ;;
+    --maxzoom)             MAXZOOM="$2"; PMTILES_OPT_SET=true; shift 2 ;;
+    --name|--output)       OUTPUT_NAME="$2"; PMTILES_OPT_SET=true; shift 2 ;;
+    --build-date)          BUILD_DATE="$2"; PMTILES_OPT_SET=true; shift 2 ;;
+    --source-url)          SOURCE_URL="$2"; PMTILES_OPT_SET=true; shift 2 ;;
     --data-dir)            DATA_DIR="$2"; shift 2 ;;
     --osm-pbf)             OSM_PBF_REGION="$2"; shift 2 ;;
     --legacy-world)        FETCH_LEGACY=true; shift ;;
@@ -263,26 +340,33 @@ if [ "$LIST_REGIONS" = true ]; then
   exit 0
 fi
 
-DID_WORK=false
+DID_OTHER_WORK=false
 
 if [ "$FETCH_LEGACY" = true ]; then
   download_legacy_world
-  DID_WORK=true
+  DID_OTHER_WORK=true
 fi
 
 if [ -n "$OSM_PBF_REGION" ]; then
   download_osm_pbf
-  DID_WORK=true
+  DID_OTHER_WORK=true
 fi
 
 if [ "$FETCH_PLANETILER_SOURCES" = true ]; then
   download_planetiler_sources
-  DID_WORK=true
+  DID_OTHER_WORK=true
 fi
 
-# Handle PMTiles extraction if --region, --bbox, --source-url, or --build-date specified
-if [ -n "$REGION" ] || [ -n "$BBOX" ] || [ -n "$SOURCE_URL" ] || [ -n "$BUILD_DATE" ]; then
-  DID_WORK=true
+# Default region to 'planet' when running the PMTiles workflow without --region or --bbox
+if [ "$PMTILES_OPT_SET" = true ] || [ "$DID_OTHER_WORK" = false ]; then
+  if [ -z "$REGION" ] && [ -z "$BBOX" ]; then
+    REGION="planet"
+    echo "==> No --region or --bbox specified; defaulting to '--region planet'."
+  fi
+fi
+
+# Run PMTiles extraction when requested or by default
+if [ -n "$REGION" ] || [ -n "$BBOX" ]; then
   DEF_ZOOM=14
   if [ -n "$REGION" ]; then
     if [ -z "${REGION_PRESETS[$REGION]+x}" ]; then
@@ -335,12 +419,6 @@ if [ -n "$REGION" ] || [ -n "$BBOX" ] || [ -n "$SOURCE_URL" ] || [ -n "$BUILD_DA
   echo "==> Map archive ready: ${DEST_PATH}"
 fi
 
-if [ "$DID_WORK" = false ]; then
-  echo "Nothing selected to download."
-  show_help
-  exit 1
-fi
-
 cat <<EOF
 
 Next steps:
@@ -351,4 +429,7 @@ Next steps:
   2. Or build a self-contained 'full' image with map data baked in:
        ./build_docker.sh --full
        ./launch_cvemap.sh --full
+
+  3. Stop the running server anytime:
+       ./stop_cvemap.sh
 EOF
