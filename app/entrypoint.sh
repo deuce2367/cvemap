@@ -33,7 +33,7 @@ Xvfb "${DISPLAY}" -screen 0 1024x768x24 -nolisten unix \
 XVFB_PID=$!
 
 cd /app
-mkdir -p /app/data/legacy /app/data/webgl/world
+mkdir -p /app/data
 
 echo "==> Preparing TileServer-GL runtime configuration..."
 RUNTIME_TS_CFG="$(python3 -m server.tileserver_sync \
@@ -49,17 +49,16 @@ node /usr/src/app/ \
 TILESERVER_PID=$!
 echo "${TILESERVER_PID}" > /tmp/tileserver.pid
 
-echo "==> Starting CVEMAP MapServer & FastAPI on port ${CVEMAP_PORT} ..."
+echo "==> Starting CVEMAP Gateway on port ${CVEMAP_PORT} ..."
 python3 -m uvicorn server.main:app --host 0.0.0.0 --port "${CVEMAP_PORT}" &
 UVICORN_PID=$!
 echo "${UVICORN_PID}" > /tmp/uvicorn.pid
 
 echo "=================================================================="
-echo " CVEMAP Unified Server Ready"
-echo "   Legacy Raster / WMS Viewer : http://localhost:${CVEMAP_PORT}/"
-echo "   Modern WebGL Vector Viewer : http://localhost:${CVEMAP_PORT}/modern"
-echo "   Admin Dashboard            : http://localhost:${CVEMAP_PORT}/admin"
-echo "   TileServer-GL Direct       : http://localhost:${TILESERVER_PORT}/"
+echo " CVEMAP Server Ready"
+echo "   Raster Viewer (XYZ & WMS) : http://localhost:${CVEMAP_PORT}/"
+echo "   Vector Viewer (WebGL MVT) : http://localhost:${CVEMAP_PORT}/modern"
+echo "   TileServer-GL Direct      : http://localhost:${TILESERVER_PORT}/"
 echo "=================================================================="
 
 wait -n "${TILESERVER_PID}" "${UVICORN_PID}"

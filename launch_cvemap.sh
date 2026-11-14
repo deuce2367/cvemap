@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # ==============================================================================
-# CVEMAP Unified Container Launcher
+# CVEMAP Container Launcher
 # ==============================================================================
-# Starts a single Docker container running MapServer, FastAPI, and TileServer-GL.
+# Starts a single Docker container running FastAPI + TileServer-GL.
 # Defaults to 'cvemap:lite' with ./app/data mounted at runtime, or '--full' to
 # run 'cvemap:full' completely standalone with baked-in map data.
 # ==============================================================================
@@ -28,7 +28,7 @@ Options:
   --full                Run 'cvemap:full' using baked-in map data (no host mount)
   --image <image:tag>   Override Docker image to run
   --data-dir <path>     Host data directory to mount in --lite mode (default: ./app/data)
-  --port <port>         Host port for CVEMAP Web/WMS/XYZ UI (default: 8000)
+  --port <port>         Host port for CVEMAP Viewers / WMS / XYZ (default: 8000)
   --ts-port <port>      Host port for direct TileServer-GL access (default: 8080)
   --name <name>         Container name (default: cvemap)
   --stop                Stop and remove running CVEMAP containers and exit
@@ -51,7 +51,6 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-# Stop any existing unified or legacy split containers
 if [ "${STOP_ONLY}" = true ]; then
   "${SCRIPT_DIR}/stop_cvemap.sh" --name "${CONTAINER_NAME}"
   exit 0
@@ -84,8 +83,7 @@ fi
 echo "==> Starting ${CONTAINER_NAME} (${IMAGE}) ..."
 docker run "${DOCKER_ARGS[@]}" "${IMAGE}" >/dev/null
 
-echo "All services started in single container '${CONTAINER_NAME}'!"
-echo "  - Legacy Raster & WMS Viewer : http://localhost:${PORT}/"
-echo "  - Modern WebGL Vector Viewer : http://localhost:${PORT}/modern"
-echo "  - Admin Dashboard            : http://localhost:${PORT}/admin"
-echo "  - TileServer-GL Endpoints    : http://localhost:${TS_PORT}/"
+echo "CVEMAP started in container '${CONTAINER_NAME}'!"
+echo "  - Raster Viewer (XYZ & WMS) : http://localhost:${PORT}/"
+echo "  - Vector Viewer (WebGL MVT) : http://localhost:${PORT}/modern"
+echo "  - TileServer-GL Direct      : http://localhost:${TS_PORT}/"

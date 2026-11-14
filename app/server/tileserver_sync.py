@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import signal
+import sqlite3
 import struct
 import subprocess
 
@@ -25,9 +26,31 @@ TILESERVER_STYLES = [
     "white",
 ]
 
+_HEADER_CACHE: dict[str, tuple[float, int, dict]] = {}
+
+
+def format_style_title(style_id: str) -> str:
+    if style_id == "black_and_white":
+        return "Protomaps Black & White"
+    return "Protomaps " + style_id.replace("_", " ").title()
+
+
+def _is_ignored_data_path(path: str, data_dir: str) -> bool:
+    rel = os.path.relpath(path, data_dir)
+    parts = rel.split(os.sep)
+    return any(p.startswith(".") or p == "legacy" for p in parts)
+
 
 def inspect_pmtiles(filepath: str) -> dict:
     """Read minZoom, maxZoom, bounds, version, and schema prefix from a PMTiles v3 header."""
+    try:
+        st = os.stat(filepath)
+        cached = _HEADER_CACHE.get(filepath)
+        if cached and cached[0] == st.st_mtime and cached[1] == st.st_size:
+            return dict(cached[2])
+    except OSError:
+        st = None
+
     info = {
         "minZoom": 0,
         "maxZoom": 14,
@@ -48,7 +71,7 @@ def inspect_pmtiles(filepath: str) -> dict:
             ]
             if min_lon < max_lon and min_lat < max_lat:
                 info["bounds"] = [min_lon, min_lat, max_lon, max_lat]
-            if meta_len > 0 and meta_len < 10 * 1024 * 1024:
+            if 0 < meta_len < 10 * 1024 * 1024:
                 f.seek(meta_off)
                 raw = f.read(meta_len)
                 if raw[:2] == b"\x1f\x8b":
@@ -62,14 +85,144 @@ def inspect_pmtiles(filepath: str) -> dict:
                 info["pmap_prefix"] = "pmap:kind" in fields
     except Exception as exc:
         logger.warning("Failed to inspect PMTiles header %s: %s", filepath, exc)
+
+    if st is not None:
+        _HEADER_CACHE[filepath] = (st.st_mtime, st.st_size, dict(info))
     return info
+
+
+def inspect_vector_mbtiles(filepath: str) -> dict | None:
+    """Inspect an MBTiles SQLite archive; returns metadata dict if it contains PBF vector tiles, else None."""
+    try:
+        st = os.stat(filepath)
+        cached = _HEADER_CACHE.get(filepath)
+        if cached and cached[0] == st.st_mtime and cached[1] == st.st_size:
+            return dict(cached[2]) if cached[2] else None
+    except OSError:
+        return None
+
+    result: dict = {}
+    try:
+        conn = sqlite3.connect(f"file:{filepath}?mode=ro", uri=True)
+        cur = conn.cursor()
+        cur.execute("SELECT name, value FROM metadata")
+        meta = {str(k).lower(): str(v) for k, v in cur.fetchall()}
+        conn.close()
+
+        fmt = meta.get("format", "").strip().lower()
+        if fmt != "pbf":
+            _HEADER_CACHE[filepath] = (st.st_mtime, st.st_size, {})
+            return None
+
+        min_z = int(meta.get("minzoom", 0) or 0)
+        max_z = int(meta.get("maxzoom", 14) or 14)
+        bounds = None
+        if "bounds" in meta:
+            parts = [float(x.strip()) for x in meta["bounds"].split(",")]
+            if len(parts) == 4 and parts[0] < parts[2] and parts[1] < parts[3]:
+                bounds = parts
+
+        result = {
+            "minZoom": min_z,
+            "maxZoom": max_z,
+            "bounds": bounds,
+        }
+    except Exception as exc:
+        logger.warning("Failed to inspect MBTiles metadata %s: %s", filepath, exc)
+        return None
+
+    _HEADER_CACHE[filepath] = (st.st_mtime, st.st_size, dict(result))
+    return result
+
+
+def discover_pmtiles_files(data_dir: str) -> list[str]:
+    if not os.path.isdir(data_dir):
+        return []
+    all_files = glob.glob(os.path.join(data_dir, "**", "*.pmtiles"), recursive=True)
+    return sorted(p for p in all_files if os.path.isfile(p) and not _is_ignored_data_path(p, data_dir))
+
+
+def select_primary_pmtiles(data_dir: str) -> str:
+    """Choose the primary PMTiles archive for TileServer-GL rendering."""
+    candidates = discover_pmtiles_files(data_dir)
+    if not candidates:
+        return ""
+
+    planet_candidates = [c for c in candidates if os.path.basename(c).lower().startswith("planet")]
+    if planet_candidates:
+        return max(planet_candidates, key=lambda p: os.path.getsize(p))
+
+    return max(candidates, key=lambda p: os.path.getsize(p))
+
+
+def discover_vector_datasets(data_dir: str) -> list[dict]:
+    """Discover all PMTiles and MVT MBTiles datasets under data_dir."""
+    if not os.path.isdir(data_dir):
+        return []
+
+    datasets: list[dict] = []
+    seen_names: set[str] = set()
+
+    for pf in discover_pmtiles_files(data_dir):
+        base = os.path.splitext(os.path.basename(pf))[0]
+        name = base if base not in seen_names else os.path.splitext(os.path.relpath(pf, data_dir))[0].replace(os.sep, "_")
+        seen_names.add(name)
+        pm_info = inspect_pmtiles(pf)
+        entry = {
+            "name": name,
+            "path": os.path.relpath(pf, data_dir),
+            "is_mbtiles": False,
+            "is_pmtiles": True,
+            "is_vector_tiles": True,
+            "minZoom": pm_info["minZoom"],
+            "maxZoom": pm_info["maxZoom"],
+            "pmap_prefix": pm_info["pmap_prefix"],
+        }
+        if pm_info.get("bounds"):
+            entry["bounds"] = pm_info["bounds"]
+        datasets.append(entry)
+
+    mbtiles_files = sorted(
+        p
+        for p in glob.glob(os.path.join(data_dir, "**", "*.mbtiles"), recursive=True)
+        if os.path.isfile(p) and not _is_ignored_data_path(p, data_dir)
+    )
+    for mf in mbtiles_files:
+        mb_info = inspect_vector_mbtiles(mf)
+        if not mb_info:
+            continue
+        base = os.path.splitext(os.path.basename(mf))[0]
+        name = base if base not in seen_names else os.path.splitext(os.path.relpath(mf, data_dir))[0].replace(os.sep, "_")
+        seen_names.add(name)
+        entry = {
+            "name": name,
+            "path": os.path.relpath(mf, data_dir),
+            "is_mbtiles": True,
+            "is_pmtiles": False,
+            "is_vector_tiles": True,
+            "minZoom": mb_info["minZoom"],
+            "maxZoom": mb_info["maxZoom"],
+        }
+        if mb_info.get("bounds"):
+            entry["bounds"] = mb_info["bounds"]
+        datasets.append(entry)
+
+    # Sort: planet PMTiles first, then planet MBTiles, then alphabetical by name
+    datasets.sort(
+        key=lambda d: (
+            0 if d["name"].lower().startswith("planet") and d.get("is_pmtiles") else
+            1 if d["name"].lower().startswith("planet") else
+            2,
+            d["name"].lower(),
+        )
+    )
+    return datasets
 
 
 def adapt_style_schema(style_obj: dict, pmap_prefix: bool) -> dict:
     """Ensure Protomaps style property names match the active PMTiles schema (v3-alpha pmap:* vs v4 unprefixed)."""
     text = json.dumps(style_obj)
     if pmap_prefix:
-        # Base styles use pmap:kind / pmap:kind_detail / pmap:min_zoom / pmap:population_rank
         return json.loads(text)
     # Modern Protomaps v4+ uses unprefixed kind, kind_detail, min_zoom, population_rank,
     # and stores boundary admin levels in numeric kind_detail instead of pmap:min_admin_level
@@ -79,37 +232,6 @@ def adapt_style_schema(style_obj: dict, pmap_prefix: bool) -> dict:
     text = text.replace('"pmap:min_zoom"', '"min_zoom"')
     text = text.replace('"pmap:population_rank"', '"population_rank"')
     return json.loads(text)
-
-
-def select_primary_pmtiles(data_dir: str, config_file: str = "") -> str:
-    """Choose the primary PMTiles archive for TileServer-GL rendering."""
-    candidates = sorted(glob.glob(os.path.join(data_dir, "webgl", "**", "*.pmtiles"), recursive=True))
-    if not candidates:
-        candidates = sorted(glob.glob(os.path.join(data_dir, "**", "*.pmtiles"), recursive=True))
-    if not candidates:
-        return ""
-
-    # 1. Respect the first enabled existing .pmtiles layer in webgl_world config if present
-    if config_file and os.path.exists(config_file):
-        try:
-            with open(config_file, "r") as f:
-                cfg = json.load(f)
-            layers = cfg.get("maps", {}).get("webgl_world", {}).get("layers", [])
-            for layer in layers:
-                if layer.get("enabled", True) and str(layer.get("path", "")).endswith(".pmtiles"):
-                    candidate = os.path.join(data_dir, layer["path"])
-                    if os.path.isfile(candidate):
-                        return candidate
-        except Exception:
-            pass
-
-    # 2. Prefer any planet*.pmtiles file
-    for c in candidates:
-        if os.path.basename(c).startswith("planet"):
-            return c
-
-    # 3. Otherwise use the largest .pmtiles file available
-    return max(candidates, key=lambda p: os.path.getsize(p))
 
 
 def sync_tileserver_runtime(
@@ -124,15 +246,13 @@ def sync_tileserver_runtime(
 
     os.makedirs(data_dir, exist_ok=True)
     os.makedirs(os.path.join(runtime_dir, "styles"), exist_ok=True)
-    config_file = os.path.join(data_dir, "config.json")
-    primary_pmtiles = select_primary_pmtiles(data_dir, config_file)
+    primary_pmtiles = select_primary_pmtiles(data_dir)
 
     pmap_prefix = True
     if primary_pmtiles and os.path.isfile(primary_pmtiles):
         info = inspect_pmtiles(primary_pmtiles)
         pmap_prefix = info["pmap_prefix"]
 
-    # Write schema-matched styles to runtime_dir/styles
     src_styles_dir = os.path.join(tileserver_template_dir, "styles")
     styles_cfg = {}
     for style_file in sorted(glob.glob(os.path.join(src_styles_dir, "*.json"))):
@@ -149,8 +269,7 @@ def sync_tileserver_runtime(
     data_cfg = {}
     if primary_pmtiles and os.path.isfile(primary_pmtiles):
         data_cfg["planet"] = {"pmtiles": os.path.abspath(primary_pmtiles)}
-        # Also expose any other .pmtiles archives by basename
-        for p in sorted(glob.glob(os.path.join(data_dir, "webgl", "**", "*.pmtiles"), recursive=True)):
+        for p in discover_pmtiles_files(data_dir):
             key = os.path.splitext(os.path.basename(p))[0]
             if key != "planet" and key not in data_cfg:
                 data_cfg[key] = {"pmtiles": os.path.abspath(p)}

@@ -3,12 +3,12 @@
 This guide explains how to generate highly optimized, minimized Protomaps Vector Tiles (PMTiles) using the modern **Protomaps V4 Schema**.
 
 By generating the map from scratch using our customized Java profile (`planetiler`), we ensure:
-1. **Perfect compatibility** with modern community themes (Seafoam, Sol, Flat, etc.).
+1. **Perfect compatibility** with all 13 bundled Protomaps themes (`Protomaps Light`, `Protomaps Dark`, `Protomaps Bio`, `Protomaps Seafoam`, `Protomaps Sol`, etc.).
 2. **Minimal file size** by stripping non-English labels, dropping extraneous metadata like `wikidata`, and slightly increasing the simplification tolerance.
 
 ## The Utility (`build_custom_map.sh`)
 
-We have created an all-in-one utility that supports building from the cached global planet file, or from a specific regional PBF file that you provide. 
+We provide an all-in-one utility that supports building from the cached global planet file, or from a specific regional PBF file that you provide.
 
 **Syntax:**
 ```bash
@@ -16,7 +16,7 @@ We have created an all-in-one utility that supports building from the cached glo
 ```
 
 ### 1. Generating a Full Planet Map
-To build a full planet map, simply provide the output name and the maximum zoom level. By omitting `--pbf`, it will default to using the global planet file (and will auto-download the ~75GB `planet.osm.pbf` if it isn't already cached).
+To build a full planet map, provide the output name and the maximum zoom level. By omitting `--pbf`, it defaults to using the global planet file (and will auto-download the ~75GB `planet.osm.pbf` if it isn't already cached).
 
 ```bash
 # Generates a full planet file up to zoom 12
@@ -24,24 +24,24 @@ To build a full planet map, simply provide the output name and the maximum zoom 
 ```
 
 ### 2. Generating from a Specific PBF File
-If you have already downloaded a smaller regional file (e.g., from Geofabrik) to avoid pulling down the entire 75GB planet, you can pass it directly:
+If you have already downloaded a smaller regional file (e.g., from Geofabrik) to avoid pulling down the entire 75GB planet, pass it directly:
 
 ```bash
 # Process a regional PBF
-./build_custom_map.sh --output madagascar --maxzoom 14 --pbf madagascar-latest.osm.pbf
+./build_custom_map.sh --output madagascar --maxzoom 14 --pbf data/sources/madagascar-latest.osm.pbf
 ```
 
 ### 3. Restricting to a Bounding Box
-You can stack the `--bbox` argument on top of any workflow to strict-clip the output vector tiles to that specific rectangular region. This works whether you are reading from the cached planet file or a specific regional PBF!
+You can stack `--bbox` on top of any workflow to clip the output vector tiles to a specific rectangular region:
 
 ```bash
 # Process only the Lagos region from an Africa PBF
-./build_custom_map.sh --output lagos --maxzoom 14 --pbf africa-latest.osm.pbf --bbox 3.0,6.3,3.6,6.7
+./build_custom_map.sh --output lagos --maxzoom 14 --pbf data/sources/africa-latest.osm.pbf --bbox 3.0,6.3,3.6,6.7
 ```
 
-## Step 3: Automatic Discovery in CVEMAP
-1. Bare output names (e.g. `--output lagos`) are written directly into `app/data/webgl/world/lagos.pmtiles`.
-2. Refresh your browser (or click **Save & Reload Maps** in `/admin`). CVEMAP automatically inspects the PMTiles v3 header (`minZoom`, `maxZoom`, and schema version) and registers the new layer in both the **Modern WebGL Viewer** (`/modern`) and **TileServer-GL**!
+## Automatic Discovery in CVEMAP
+1. Bare output names (e.g. `--output lagos`) are written directly into `app/data/lagos.pmtiles`.
+2. Refresh your browser—CVEMAP automatically inspects the PMTiles v3 header (`minZoom`, `maxZoom`, bounds, and schema version) and registers the archive in both the **Vector Viewer** (`/modern`) and **TileServer-GL** (**Raster Viewer** at `/`)!
 
 ## Bootstrapping in a New Environment
 
@@ -50,8 +50,8 @@ You do **not** need Java or Maven installed locally on your host:
 - If `java` is not installed locally, `./build_custom_map.sh` automatically runs Planetiler inside `eclipse-temurin:21-jre`.
 - Alternatively, if you just want a ready-made global or regional basemap without compiling from raw OSM PBFs, run `./download_map_data.sh --help`!
 
-### Launching the Unified Server
-To build and launch the unified container (MapServer + FastAPI + TileServer-GL):
+### Launching CVEMAP
+To build and launch the unified container (FastAPI + TileServer-GL):
 ```bash
 # Build 'lite' image (mounts ./app/data at runtime) and launch:
 ./build_docker.sh --lite
@@ -61,6 +61,6 @@ To build and launch the unified container (MapServer + FastAPI + TileServer-GL):
 ./build_docker.sh --full
 ./launch_cvemap.sh --full
 ```
-- **Legacy Raster & WMS Viewer**: `http://localhost:8000/`
-- **Modern WebGL Vector Viewer**: `http://localhost:8000/modern`
+- **Raster Viewer (XYZ & WMS)**: `http://localhost:8000/`
+- **Vector Viewer (WebGL MVT)**: `http://localhost:8000/modern`
 - **TileServer-GL Direct**: `http://localhost:8080/`

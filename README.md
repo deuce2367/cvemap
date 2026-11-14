@@ -1,6 +1,6 @@
 # CVEMAP
 
-Self-contained, offline-ready GIS map server combining **MapServer (WMS & XYZ)**, **FastAPI**, **MapLibre GL JS (WebGL Vector / PMTiles)**, and **TileServer-GL (CPU Vector-to-Raster Renderer)** inside a **single unified Docker image**.
+Self-contained, offline-ready GIS map server combining **TileServer-GL (Raster & Vector Tile Engine)**, **FastAPI (XYZ & OGC WMS Gateway)**, and **MapLibre GL JS / Leaflet** inside a **single unified Docker image**.
 
 ---
 
@@ -13,7 +13,7 @@ cd cvemap
 ```
 
 ### 2. Download Map Data
-Use `./download_map_data.sh` to fetch ready-to-serve Protomaps `.pmtiles` vector basemaps (auto-bootstraps the `go-pmtiles` CLI if not installed), optional Natural Earth Shapefiles, or Geofabrik `.osm.pbf` extracts. If `--region` is omitted, it defaults to **`planet`**:
+Use `./download_map_data.sh` to fetch ready-to-serve Protomaps `.pmtiles` vector basemaps (auto-bootstraps the `go-pmtiles` CLI if not installed) or Geofabrik `.osm.pbf` extracts. If `--region` is omitted, it defaults to **`planet`**:
 
 ```bash
 # Detailed guide explaining every option & workflow
@@ -34,10 +34,10 @@ Use `./download_map_data.sh` to fetch ready-to-serve Protomaps `.pmtiles` vector
 ./download_map_data.sh --bbox -77.25,38.79,-76.90,39.02 --maxzoom 14 --name dc_metro
 ```
 
-> Any `.pmtiles`, `.mbtiles`, `.shp`, `.fgb`, or `.geojson` placed under `app/data/` is **automatically discovered** on startup—no manual `config.json` editing required.
+> Any `.pmtiles` or vector `.mbtiles` placed under `app/data/` is **automatically discovered** on the fly—no manual configuration required.
 
 ### 3. Build the Unified Docker Image (`lite` or `full`)
-Both targets run **all software** (MapServer CGI, FastAPI, Xvfb, and TileServer-GL) in one container:
+Both targets run **FastAPI + Xvfb + TileServer-GL** in a single container:
 
 ```bash
 # Option A: "lite" image (fast build; mounts ./app/data at runtime)
@@ -46,7 +46,7 @@ Both targets run **all software** (MapServer CGI, FastAPI, Xvfb, and TileServer-
 # Option B: "full" image (bakes ./app/data into a self-contained offline image)
 ./build_docker.sh --full
 
-# Optional: build a "full" image bundling only specific archive(s) + legacy world vectors
+# Optional: build a "full" image bundling only specific archive(s)
 ./build_docker.sh --full --include monaco-z15.pmtiles --tag cvemap:monaco
 ```
 
@@ -66,15 +66,15 @@ Both targets run **all software** (MapServer CGI, FastAPI, Xvfb, and TileServer-
 
 ---
 
-## Endpoints & Viewers
+## Viewers & Endpoints
 
 | Service / Endpoint | URL | Description |
 | :--- | :--- | :--- |
-| **Legacy Raster & WMS Viewer** | `http://localhost:8000/` | Leaflet viewer supporting both **XYZ** and **MapServer WMS** across Shapefiles, FlatGeobuf, MBTiles, and TileServer-GL styles |
-| **Modern WebGL Vector Viewer** | `http://localhost:8000/modern` | Hardware-accelerated MapLibre GL JS viewer serving PMTiles & MVT with 13 offline Protomaps styles |
-| **Admin Dashboard** | `http://localhost:8000/admin` | Layer styling, choropleths, labels, ordering, and Mapfile inspector (`admin` / `password`) |
-| **WMS Endpoint** | `http://localhost:8000/wms/{map_id}` | Standard OGC WMS (`EPSG:3857` & `EPSG:4326`) for QGIS, ArcGIS, Leaflet, OpenLayers |
-| **XYZ Endpoint** | `http://localhost:8000/xyz/{map_id}/{layer}/{z}/{x}/{y}.png` | Pre-rendered or MapServer/TileServer raster XYZ tiles |
+| **Raster Viewer** | `http://localhost:8000/` | Leaflet viewer serving all 13 offline Protomaps basemaps over both **XYZ** and **OGC WMS** |
+| **Vector Viewer** | `http://localhost:8000/modern` | Hardware-accelerated MapLibre GL JS viewer rendering native PMTiles & MVT vector tiles |
+| **WMS Endpoint** | `http://localhost:8000/wms` | OGC WMS `1.1.1` & `1.3.0` (`GetCapabilities` & `GetMap` in `EPSG:3857` & `EPSG:4326`) for QGIS, ArcGIS, Leaflet, OpenLayers |
+| **XYZ Endpoint** | `http://localhost:8000/xyz/{style}/{z}/{x}/{y}.png` | Standard slippy raster PNG tiles (`light`, `dark`, `bio`, `seafoam`, `sol`, etc.) |
+| **WMTS Endpoint** | `http://localhost:8000/tileserver/styles/{style}/wmts.xml` | OGC WMTS capabilities for each Protomaps basemap style |
 | **TileServer-GL Direct** | `http://localhost:8080/` | Direct TileServer-GL dashboard & endpoints (also proxied on `:8000/tileserver/`) |
 
 ---

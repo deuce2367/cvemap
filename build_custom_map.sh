@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Default arguments
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_NAME=""
 MAXZOOM=14
@@ -15,7 +14,8 @@ Usage: $0 --output <name> [--maxzoom <zoom>] [--pbf <file.osm.pbf>] [--bbox minl
 
 Builds a custom Protomaps V4 vector basemap (.pmtiles) from raw OpenStreetMap PBF data.
 Automatically compiles Planetiler via Docker if not yet built, and places bare output
-filenames directly into app/data/webgl/world/ for instant auto-discovery.
+filenames directly into app/data/ for instant auto-discovery by both the Raster Viewer
+and Vector Viewer.
 
 Examples:
   From regional PBF : ./build_custom_map.sh --output monaco --maxzoom 14 --pbf data/sources/monaco-latest.osm.pbf
@@ -47,8 +47,8 @@ if [[ "$OUTPUT_FILE" != *.pmtiles && "$OUTPUT_FILE" != *.mbtiles ]]; then
     OUTPUT_FILE="${OUTPUT_FILE}.pmtiles"
 fi
 if [[ "$OUTPUT_FILE" != */* ]]; then
-    mkdir -p "${SCRIPT_DIR}/app/data/webgl/world"
-    OUTPUT_FILE="app/data/webgl/world/${OUTPUT_FILE}"
+    mkdir -p "${SCRIPT_DIR}/app/data"
+    OUTPUT_FILE="app/data/${OUTPUT_FILE}"
 fi
 
 PLANETILER_JAR="${SCRIPT_DIR}/basemaps/tiles/target/protomaps-basemap-HEAD-with-deps.jar"

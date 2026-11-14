@@ -4,8 +4,7 @@ set -euo pipefail
 # ==============================================================================
 # CVEMAP Container Stopper
 # ==============================================================================
-# Cleanly stops and removes running CVEMAP Docker containers (both unified
-# 'cvemap' containers and any legacy split 'cvemap-dev' / 'tileserver' ones).
+# Cleanly stops and removes running CVEMAP Docker containers.
 # ==============================================================================
 
 CONTAINER_NAME="cvemap"
@@ -17,7 +16,7 @@ Usage:
   ./stop_cvemap.sh [options]
 
 Description:
-  Stops and removes the running CVEMAP container (MapServer + FastAPI + TileServer-GL)
+  Stops and removes the running CVEMAP container (FastAPI + TileServer-GL)
   without touching any map data in ./app/data.
 
 Options:
@@ -44,7 +43,6 @@ if [ "${STOP_ALL}" = true ]; then
   done < <(docker ps -a --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^cvemap(:|$)/ {print $1}')
 fi
 
-# Deduplicate target container names
 declare -A SEEN=()
 FOUND_ANY=false
 

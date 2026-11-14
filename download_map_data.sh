@@ -5,8 +5,8 @@ set -euo pipefail
 # CVEMAP Map Source Data Downloader
 # ==============================================================================
 # Friendly bootstrap utility to download ready-to-serve Protomaps PMTiles
-# (full planet, named regions, or custom bounding boxes), Legacy Natural Earth
-# vector layers, or raw Geofabrik OSM PBFs / Planetiler auxiliary datasets.
+# (full planet, named regions, or custom bounding boxes) or raw Geofabrik OSM
+# PBFs / Planetiler auxiliary datasets for custom vector tile compilation.
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +14,6 @@ DATA_DIR="${SCRIPT_DIR}/app/data"
 SOURCES_DIR="${SCRIPT_DIR}/data/sources"
 GO_PMTILES_VERSION="1.28.1"
 
-MODE="pmtiles"
 REGION=""
 BBOX=""
 MAXZOOM=""
@@ -24,7 +23,6 @@ SOURCE_URL=""
 OSM_PBF_REGION=""
 DRY_RUN=false
 LIST_REGIONS=false
-FETCH_LEGACY=false
 FETCH_PLANETILER_SOURCES=false
 
 # Named region bounding boxes (minLon,minLat,maxLon,maxLat|defaultMaxZoom)
@@ -59,11 +57,11 @@ WHICH WORKFLOW SHOULD I CHOOSE?
 --------------------------------------------------------------------------------
   1. Protomaps PMTiles Basemap (DEFAULT - Recommended for almost everyone)
      Slices a ready-to-serve '.pmtiles' vector archive directly from Protomaps'
-     daily OpenStreetMap builds into 'app/data/webgl/world/' (auto-downloads the
-     lightweight 'go-pmtiles' CLI if needed; no Java compilation required).
-     One '.pmtiles' file powers BOTH:
-       - Modern WebGL Vector Viewer (/modern)
-       - Legacy Raster XYZ & OGC WMS Viewer (/) via TileServer-GL + MapServer
+     daily OpenStreetMap builds into 'app/data/' (auto-downloads the lightweight
+     'go-pmtiles' CLI if needed; no Java compilation required).
+     One '.pmtiles' file powers BOTH viewers across all 13 Protomaps themes:
+       - Raster Viewer (/)      : XYZ slippy tiles, OGC WMS, and OGC WMTS
+       - Vector Viewer (/modern): Native WebGL MVT rendering via MapLibre GL JS
 
      Pick your geographic coverage:
        * Default ('planet') : Full world basemap when --region/--bbox is omitted.
@@ -72,14 +70,7 @@ WHICH WORKFLOW SHOULD I CHOOSE?
        * '--bbox <w,s,e,n>' : Custom lon/lat rectangle for a specific area of
                               interest when no built-in preset fits.
 
-  2. Legacy Natural Earth Shapefiles ('--legacy-world' - Optional)
-     CVEMAP already ships with compact stock world layers (countries, cities,
-     and capitals in FlatGeobuf format) out of the box. Choose '--legacy-world'
-     only if you want additional Natural Earth '.shp' files with rich attribute
-     columns (ISO codes, population/GDP ranks) to build custom MapServer
-     choropleths or label classes in the '/admin' panel.
-
-  3. Raw OSM PBF + Planetiler ('--osm-pbf' & '--planetiler-sources' - Advanced)
+  2. Raw OSM PBF + Planetiler ('--osm-pbf' & '--planetiler-sources' - Advanced)
      NOT needed to run CVEMAP. These flags download raw OpenStreetMap '.osm.pbf'
      dumps from Geofabrik and coastline/land auxiliary datasets into
      'data/sources/' so you can compile custom vector tiles from scratch using
@@ -101,10 +92,10 @@ CHOOSING '--maxzoom' (DETAIL vs. DOWNLOAD SIZE)
 OPTIONS
 --------------------------------------------------------------------------------
   Protomaps PMTiles Options (default workflow):
-    --region <name>          Named geographic preset to extract into
-                             app/data/webgl/world/. Defaults to 'planet' if
-                             neither --region, --bbox, nor another workflow flag
-                             is specified. Run --list-regions to see all presets.
+    --region <name>          Named geographic preset to extract into app/data/.
+                             Defaults to 'planet' if neither --region, --bbox,
+                             nor another workflow flag is specified.
+                             Run --list-regions to see all presets.
     --bbox <w,s,e,n>         Extract a custom bounding box instead of a named
                              preset, formatted as minLon,minLat,maxLon,maxLat in
                              WGS84 degrees (e.g. -77.25,38.79,-76.90,39.02).
@@ -113,7 +104,7 @@ OPTIONS
     --maxzoom <0-15>         Maximum tile zoom level to include. Overrides the
                              preset's default (z12 for planet/continents, z13-15
                              for countries/cities). Lower = much smaller file.
-    --name <filename>        Custom output filename in app/data/webgl/world/
+    --name <filename>        Custom output filename in app/data/
                              (e.g. 'dc_metro' -> dc_metro.pmtiles). Defaults to
                              '<region>-z<maxzoom>.pmtiles'.
     --build-date <YYYYMMDD>  Pin a specific Protomaps daily build date instead of
@@ -121,11 +112,6 @@ OPTIONS
                              for reproducible team/offline builds.
     --source-url <url>       Extract from a custom remote or local PMTiles URL/path
                              instead of https://build.protomaps.com/.
-
-  Optional Legacy MapServer Layers:
-    --legacy-world           Download Natural Earth 1:110m countries & 1:50m
-                             populated places Shapefiles into app/data/legacy/world/
-                             for direct MapServer vector styling in /admin.
 
   Advanced Custom Tile Compilation Inputs (for ./build_custom_map.sh):
     --osm-pbf <geofabrik>    Download a raw Geofabrik OpenStreetMap extract into
@@ -162,10 +148,7 @@ EXAMPLES
   # 5. Custom bounding box (Washington, D.C. metro area):
   ./download_map_data.sh --bbox -77.25,38.79,-76.90,39.02 --maxzoom 14 --name dc_metro
 
-  # 6. Add optional Natural Earth Shapefiles for /admin choropleth styling:
-  ./download_map_data.sh --legacy-world
-
-  # 7. Advanced: Fetch raw OSM PBF + Planetiler inputs for custom Java builds:
+  # 6. Advanced: Fetch raw OSM PBF + Planetiler inputs for custom Java builds:
   ./download_map_data.sh --osm-pbf europe/monaco --planetiler-sources
 EOF
 }
@@ -249,35 +232,9 @@ resolve_latest_protomaps_url() {
   echo "https://build.protomaps.com/${latest_key}"
 }
 
-download_legacy_world() {
-  local world_dir="${DATA_DIR}/legacy/world"
-  mkdir -p "${world_dir}"
-  if [ -f "${world_dir}/geoBoundariesCGAZ_ADM0.shp" ] || [ -f "${world_dir}/ne_110m_admin_0_countries.shp" ]; then
-    echo "==> Legacy world vector layers already present in ${world_dir}."
-    return
-  fi
-  echo "==> Downloading Natural Earth 1:110m Admin 0 Countries & Populated Places into ${world_dir} ..."
-  local countries_url="https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
-  local places_url="https://naciscdn.org/naturalearth/50m/cultural/ne_50m_populated_places_simple.zip"
-  if [ "$DRY_RUN" = true ]; then
-    echo "[dry-run] curl -fSL ${countries_url} -> ${world_dir}"
-    echo "[dry-run] curl -fSL ${places_url} -> ${world_dir}"
-    return
-  fi
-  local tmp_zip
-  for zip_url in "${countries_url}" "${places_url}"; do
-    tmp_zip="$(mktemp /tmp/ne_legacy_XXXXXX.zip)"
-    curl -fSL "${zip_url}" -o "${tmp_zip}"
-    python3 -m zipfile -e "${tmp_zip}" "${world_dir}"
-    rm -f "${tmp_zip}"
-  done
-  echo "==> Legacy world vector layers ready in ${world_dir}."
-}
-
 download_osm_pbf() {
   local region_slug="${OSM_PBF_REGION%.osm.pbf}"
   region_slug="${region_slug%-latest}"
-  # Convenience alias if 'monaco' passed instead of 'europe/monaco'
   if [ "$region_slug" = "monaco" ]; then
     region_slug="europe/monaco"
   elif [ "$region_slug" = "madagascar" ]; then
@@ -326,7 +283,6 @@ while [ "$#" -gt 0 ]; do
     --source-url)          SOURCE_URL="$2"; PMTILES_OPT_SET=true; shift 2 ;;
     --data-dir)            DATA_DIR="$2"; shift 2 ;;
     --osm-pbf)             OSM_PBF_REGION="$2"; shift 2 ;;
-    --legacy-world)        FETCH_LEGACY=true; shift ;;
     --planetiler-sources)  FETCH_PLANETILER_SOURCES=true; shift ;;
     --list-regions)        LIST_REGIONS=true; shift ;;
     --dry-run)             DRY_RUN=true; shift ;;
@@ -341,11 +297,6 @@ if [ "$LIST_REGIONS" = true ]; then
 fi
 
 DID_OTHER_WORK=false
-
-if [ "$FETCH_LEGACY" = true ]; then
-  download_legacy_world
-  DID_OTHER_WORK=true
-fi
 
 if [ -n "$OSM_PBF_REGION" ]; then
   download_osm_pbf
@@ -393,9 +344,8 @@ if [ -n "$REGION" ] || [ -n "$BBOX" ]; then
     OUTPUT_NAME="${OUTPUT_NAME}.pmtiles"
   fi
 
-  DEST_DIR="${DATA_DIR}/webgl/world"
-  DEST_PATH="${DEST_DIR}/${OUTPUT_NAME}"
-  mkdir -p "${DEST_DIR}"
+  mkdir -p "${DATA_DIR}"
+  DEST_PATH="${DATA_DIR}/${OUTPUT_NAME}"
 
   PMTILES_BIN="$(ensure_pmtiles_cli)"
   REMOTE_URL="$(resolve_latest_protomaps_url)"

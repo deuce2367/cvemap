@@ -2,7 +2,7 @@
 <html>
 <head>
     <link rel="icon" type="image/svg+xml" href="/static/boulder.svg">
-    <title>CVE MapServer - WebGL Map</title>
+    <title>CVEMAP - Vector Viewer</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="/static/vendor/maplibre-gl.css?v=2" rel="stylesheet" />
@@ -12,31 +12,31 @@
         body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         #minimap { position: absolute; bottom: 20px; right: 20px; width: 200px; height: 200px; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 1000; border-radius: 50%; overflow: hidden; pointer-events: none; }
-        #coords { position: absolute; bottom: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        #coords { position: absolute; bottom: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.85); padding: 5px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         #overlay { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 240px; width: 240px; box-sizing: border-box; font-family: sans-serif; }
         select { margin-top: 5px; padding: 5px; width: 100%; font-size: 13px; margin-bottom: 10px; }
-        .btn { display: inline-block; margin-top: 10px; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
+        .btn { display: inline-block; margin-top: 6px; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
         .btn:hover { background: #e0e0e0; }
         #error-log { position: absolute; bottom: 40px; left: 10px; z-index: 2000; background: rgba(200,0,0,0.9); color: white; padding: 10px; border-radius: 4px; display: none; font-family: monospace; font-size: 12px; max-width: 70%; max-height: 180px; overflow: auto; white-space: pre-wrap; }
         #fallback-banner { position: absolute; top: 10px; left: 265px; right: 60px; z-index: 1500; background: rgba(255, 248, 225, 0.96); color: #5d4037; border: 1px solid #ffb74d; border-radius: 6px; padding: 8px 32px 8px 12px; font-size: 12px; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: none; }
         #fallback-banner .dismiss { position: absolute; top: 6px; right: 10px; cursor: pointer; font-weight: bold; font-size: 16px; color: #8d6e63; }
-        
+
         .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
         .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 60%; max-width: 600px; border-radius: 6px; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         .close:hover { color: black; }
-        .code-block { background: #f4f4f4; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; overflow-x: auto; border: 1px solid #ddd; margin-bottom:15px; white-space: pre; }
+        .code-block { background: #f4f4f4; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; overflow-x: auto; border: 1px solid #ddd; margin-bottom: 15px; white-space: pre; }
     </style>
 </head>
 <body>
     <div id="integrationModal" class="modal">
       <div class="modal-content">
         <span class="close" onclick="document.getElementById('integrationModal').style.display='none'">&times;</span>
-        <h2>WebGL Integration Links</h2>
-        <p>Use these snippets to load the current vector layer directly into MapLibre GL JS or Mapbox GL JS.</p>
-        
+        <h2>Vector Integration Links</h2>
+        <p>Use these snippets to load the current vector dataset directly into MapLibre GL JS or Mapbox GL JS.</p>
+
         <h3>MapLibre GL JS (Vector Source)</h3>
-        <p>If you are integrating this into a frontend application, configure your MapLibre style source like this:</p>
+        <p>Configure your MapLibre style source like this:</p>
         <div class="code-block" id="integrationCode"></div>
       </div>
     </div>
@@ -47,16 +47,20 @@
         </div>
         <h3 style="margin-top: 0; text-align: center;">Vector Viewer</h3>
         <p style="font-size: 13px; color: #555;">Rendering native MVT via WebGL.</p>
-        
+
+        <label for="viewer-select" style="font-size: 12px; font-weight: bold;">Viewer:</label>
+        <select id="viewer-select" onchange="onViewerChange(this.value)">
+            <option value="raster">Raster</option>
+            <option value="vector" selected>Vector</option>
+        </select>
+
         <label for="layer-select" style="font-size: 12px; font-weight: bold;">Map Dataset:</label>
         <select id="layer-select" onchange="changeLayer(this.value)"></select>
 
         <label for="style-select" style="font-size: 12px; font-weight: bold;">Basemap:</label>
         <select id="style-select" onchange="changeStyle(this.value)"></select>
-        
+
         <button class="btn" onclick="showIntegration()">🔗 Integration Links</button>
-        <br>
-        <a href="/" class="btn" style="color: #007bff; border-color: #007bff; background: white;">&larr; Legacy Raster Viewer</a>
     </div>
     <div id="fallback-banner">
         <span class="dismiss" onclick="document.getElementById('fallback-banner').style.display='none'" title="Dismiss">&times;</span>
@@ -89,14 +93,18 @@
             reportError("PROMISE REJECTION", event.reason);
         });
 
+        window.addEventListener('pageshow', function() {
+            document.getElementById('viewer-select').value = 'vector';
+        });
+
         try {
-            // Register PMTiles protocol
             let protocol = new pmtiles.Protocol();
             maplibregl.addProtocol("pmtiles", protocol.tile);
         } catch (e) {
             console.error("PMTiles protocol registration failed", e);
         }
 
+        var urlParams = new URLSearchParams(window.location.search);
         var map = null;
         var minimap = null;
         var fallbackMap = null;
@@ -105,72 +113,62 @@
         var fallbackMiniLayer = null;
         var usingFallback = false;
         var leafletLoadingPromise = null;
-        var layerName = new URLSearchParams(window.location.search).get('layer') || "planet_2024_pmtiles_z12";
-        var dynamicMaxZoom = 14; 
+        var layerName = urlParams.get('layer') || "";
+        var requestedTheme = urlParams.get('style') || "";
+        var dynamicMaxZoom = 14;
         var isPmtiles = false;
         var targetLayer = null;
-        var globalConfig = null;
+        var datasets = [];
 
         fetch('/api/maps?' + new Date().getTime())
-            .then(res => res.json())
-            .then(config => {
-                globalConfig = config;
+            .then(function(res) { return res.json(); })
+            .then(function(config) {
+                datasets = Array.isArray(config.datasets)
+                    ? config.datasets
+                    : ((config.maps && config.maps.webgl_world && config.maps.webgl_world.layers) || []);
                 setupState();
                 setupDropdowns();
                 initMap();
             })
-            .catch(err => {
+            .catch(function(err) {
                 console.error("Failed to load config", err);
-                setupDropdowns(); // Fallback
+                setupDropdowns();
                 initMap();
             });
 
         function setupState() {
-            if (!globalConfig) return;
             isPmtiles = false;
-            try {
-                const worldLayers = globalConfig.maps.webgl_world.layers || [];
-                targetLayer = worldLayers.find(l => l.name === layerName);
-                if (!targetLayer && worldLayers.length > 0) {
-                    targetLayer = worldLayers.find(l => l.is_vector_tiles);
-                    layerName = targetLayer.name;
-                }
-                
-                if (targetLayer && targetLayer.maxZoom !== undefined) {
-                    dynamicMaxZoom = targetLayer.maxZoom;
-                }
-                if (targetLayer && targetLayer.path && targetLayer.path.endsWith('.pmtiles')) {
-                    isPmtiles = true;
-                }
-            } catch (e) {
-                console.error("Config parsing error", e);
+            targetLayer = datasets.find(function(l) { return l.name === layerName; }) || null;
+            if (!targetLayer && datasets.length > 0) {
+                targetLayer = datasets[0];
+                layerName = targetLayer.name;
+            }
+            if (targetLayer && targetLayer.maxZoom !== undefined) {
+                dynamicMaxZoom = targetLayer.maxZoom;
+            }
+            if (targetLayer && targetLayer.path && targetLayer.path.endsWith('.pmtiles')) {
+                isPmtiles = true;
             }
         }
 
         function setupDropdowns() {
-            // Populate Layer Dropdown
             var layerSelect = document.getElementById('layer-select');
             layerSelect.innerHTML = "";
-            if (globalConfig) {
-                try {
-                    const worldLayers = globalConfig.maps.webgl_world.layers || [];
-                    worldLayers.forEach(l => {
-                        if (l.is_vector_tiles) {
-                            var isSelected = (l.name === layerName) ? "selected" : "";
-                            layerSelect.innerHTML += `<option value="${l.name}" ${isSelected}>${l.name}</option>`;
-                        }
-                    });
-                } catch(e) {}
-            }
+            datasets.forEach(function(l) {
+                var isSelected = (l.name === layerName) ? "selected" : "";
+                layerSelect.innerHTML += '<option value="' + l.name + '" ' + isSelected + '>' + l.name + '</option>';
+            });
             if (layerSelect.innerHTML === "") {
-                layerSelect.innerHTML = `<option value="${layerName}">${layerName}</option>`;
+                layerSelect.innerHTML = '<option value="">No datasets found in app/data</option>';
             }
 
-            // Populate Basemap Style Dropdown (alpha-sorted, defaulting to Protomaps Light)
             var select = document.getElementById('style-select');
             var prevValue = select.value;
+            if (!prevValue && requestedTheme && isPmtiles) {
+                prevValue = '/static/vendor/protomaps-themes/' + requestedTheme + '.json';
+            }
             var html = "";
-            
+
             if (isPmtiles) {
                 var protomapsOptions = [
                     { url: '/static/vendor/protomaps-themes/bio.json', title: 'Protomaps Bio' },
@@ -195,7 +193,6 @@
                     html += '<option value="' + o.url + '"' + selAttr + '>' + o.title + '</option>';
                 });
             } else {
-                // OpenMapTiles schema themes (alpha-sorted)
                 var omtOptions = [
                     { url: '/static/vendor/carto-dark/style.json', title: 'Dark Matter (Dark)' },
                     { url: '/static/vendor/carto-color/style.json', title: 'OSM Bright (Colorful)' },
@@ -247,6 +244,28 @@
             if (styleUrl.includes('carto-color')) return 'sol';
             return 'light';
         }
+
+        window.onViewerChange = function(mode) {
+            if (mode === 'raster') {
+                var theme = styleUrlToTileServerTheme(document.getElementById('style-select').value);
+                var z = 4, lat = 0, lng = 0;
+                if (map) {
+                    var c = map.getCenter();
+                    z = Math.round(map.getZoom());
+                    lat = c.lat;
+                    lng = c.lng;
+                } else if (fallbackMap) {
+                    var fc = fallbackMap.getCenter();
+                    z = Math.round(fallbackMap.getZoom());
+                    lat = fc.lat;
+                    lng = fc.lng;
+                } else {
+                    var hv = parseHashView();
+                    if (hv) { z = Math.round(hv.zoom); lat = hv.lat; lng = hv.lng; }
+                }
+                window.location.href = '/?style=' + encodeURIComponent(theme) + '#' + z + '/' + lat.toFixed(4) + '/' + lng.toFixed(4);
+            }
+        };
 
         function ensureLeafletLoaded() {
             if (window.L) return Promise.resolve();
@@ -324,14 +343,14 @@
                     worldCopyJump: true,
                     minZoom: 0,
                     maxZoom: 18
-                }).setView([hv.lat, hv.lng], hv.zoom);
+                }).setView([hv.lat, hv.lng], Math.round(hv.zoom));
                 L.control.zoom({ position: 'topright' }).addTo(fallbackMap);
 
                 fallbackTileLayer = L.tileLayer(tileUrl, {
                     minZoom: 0,
                     maxZoom: 18,
                     maxNativeZoom: dynamicMaxZoom || 18,
-                    attribution: 'TileServer-GL (' + theme + ')'
+                    attribution: 'TileServer GL (' + theme + ')'
                 }).addTo(fallbackMap);
 
                 var regBounds = getRegionalBounds(targetLayer);
@@ -383,14 +402,13 @@
         }
 
         function loadStyle(styleUrl, callback) {
-            if (!styleUrl) return;
+            if (!styleUrl || !targetLayer) return;
             fetch(styleUrl + "?v=" + new Date().getTime())
                 .then(function(res) {
                     if (!res.ok) throw new Error("HTTP " + res.status + " fetching " + styleUrl);
                     return res.json();
                 })
                 .then(function(style) {
-                    // Make it fully offline!
                     if (isPmtiles) {
                         style.glyphs = window.location.origin + "/static/vendor/protomaps-assets/fonts/{fontstack}/{range}.pbf";
                         const themeName = styleUrl.split('/').pop().replace('.json', '');
@@ -403,8 +421,8 @@
                     } else {
                         style.glyphs = window.location.origin + "/static/vendor/font-glyphs/glyphs/{fontstack}/{range}.pbf";
                         if (style.sources["natural_earth_shaded_relief"]) { delete style.sources["natural_earth_shaded_relief"]; }
-                        if (style.layers) { style.layers = style.layers.filter(l => l.source !== "natural_earth_shaded_relief"); }
-                        
+                        if (style.layers) { style.layers = style.layers.filter(function(l) { return l.source !== "natural_earth_shaded_relief"; }); }
+
                         if (styleUrl.includes('carto-light')) {
                             style.sprite = window.location.origin + "/static/vendor/carto-light/sprites/sprite";
                         } else if (styleUrl.includes('carto-dark')) {
@@ -414,24 +432,19 @@
                         } else {
                             style.sprite = window.location.origin + "/static/vendor/osm-liberty/sprites/osm-liberty";
                         }
-
                     }
-                    var sourceUrl = "";
+
                     var localSource = {
                         "type": "vector",
                         "maxzoom": dynamicMaxZoom
                     };
 
                     if (isPmtiles) {
-                        var filepath = targetLayer.path;
-                        sourceUrl = "pmtiles://" + window.location.origin + "/data/" + filepath + "?v=" + new Date().getTime();
-                        localSource.url = sourceUrl;
+                        localSource.url = "pmtiles://" + window.location.origin + "/data/" + targetLayer.path + "?v=" + new Date().getTime();
                     } else {
-                        sourceUrl = window.location.origin + "/mvt/webgl_world/" + layerName + "/{z}/{x}/{y}.pbf";
-                        localSource.tiles = [sourceUrl];
+                        localSource.tiles = [window.location.origin + "/mvt/" + encodeURIComponent(layerName) + "/{z}/{x}/{y}.pbf"];
                     }
 
-                    // Replace the source matching the schema
                     if (style.sources["protomaps"]) {
                         style.sources["protomaps"] = localSource;
                     } else if (style.sources["carto"]) {
@@ -440,11 +453,10 @@
                         style.sources["openmaptiles"] = localSource;
                     }
 
-                    // Adapt Protomaps property schema automatically based on PMTiles metadata (v4-alpha pmap:* vs v4 unprefixed)
                     if (isPmtiles) {
                         var usesPmapPrefix = targetLayer && targetLayer.pmap_prefix !== undefined
                             ? Boolean(targetLayer.pmap_prefix)
-                            : (layerName === "planet_2024_pmtiles_z12");
+                            : false;
                         let styleStr = JSON.stringify(style);
                         if (!usesPmapPrefix) {
                             styleStr = styleStr.replace(/"pmap:min_admin_level"/g, '"kind_detail"');
@@ -475,8 +487,7 @@
 
         function initMap() {
             var select = document.getElementById('style-select');
-            if (!select.value) {
-                console.error("No style selected!");
+            if (!select.value || !targetLayer) {
                 return;
             }
             destroyAllMaps();
@@ -485,14 +496,14 @@
                 initServerFallback(select.value, null);
                 return;
             }
-            
+
             loadStyle(select.value, function(style) {
                 var miniStyle = JSON.parse(JSON.stringify(style));
                 try {
                     map = new maplibregl.Map({
                         container: 'map',
                         style: style,
-                        center: [0, 0], 
+                        center: [0, 0],
                         zoom: 4,
                         hash: true
                     });
@@ -502,7 +513,6 @@
                     return;
                 }
 
-                // Track map errors immediately
                 map.on('error', function(e) {
                     if (e && e.error) {
                         reportError("MAP ERROR", e.error);
@@ -511,7 +521,6 @@
 
                 map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
 
-                // Auto-fit regional PMTiles extracts if current center is outside the archive bounds
                 var regBounds = getRegionalBounds(targetLayer);
                 if (regBounds) {
                     var c = map.getCenter();
@@ -522,14 +531,12 @@
                         );
                     }
                 }
-                
-                // Coordinates display
+
                 map.on('mousemove', function (e) {
-                    document.getElementById('coords').innerHTML = 
+                    document.getElementById('coords').innerHTML =
                         "Lat: " + e.lngLat.lat.toFixed(4) + ", Lon: " + e.lngLat.lng.toFixed(4);
                 });
-                
-                // Minimap (isolated so secondary WebGL context limits cannot break the main map)
+
                 try {
                     minimap = new maplibregl.Map({
                         container: 'minimap',
@@ -539,8 +546,7 @@
                         interactive: false,
                         attributionControl: false
                     });
-                    
-                    // Sync minimap to main map
+
                     map.on('move', function() {
                         if (minimap) {
                             minimap.jumpTo({
@@ -559,8 +565,18 @@
         }
 
         window.changeStyle = function(styleUrl) {
+            var theme = styleUrlToTileServerTheme(styleUrl);
+            requestedTheme = theme;
+            var params = new URLSearchParams(window.location.search);
+            if (theme && theme !== 'light') {
+                params.set('style', theme);
+            } else {
+                params.delete('style');
+            }
+            var qs = params.toString();
+            window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+
             if (usingFallback && fallbackMap) {
-                var theme = styleUrlToTileServerTheme(styleUrl);
                 var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=3';
                 if (fallbackTileLayer) fallbackTileLayer.setUrl(tileUrl);
                 if (fallbackMiniLayer) fallbackMiniLayer.setUrl(tileUrl);
@@ -575,9 +591,11 @@
 
         window.changeLayer = function(newLayerName) {
             layerName = newLayerName;
-            
-            var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?layer=' + layerName + window.location.hash;
-            window.history.pushState({path:newurl},'',newurl);
+            var params = new URLSearchParams(window.location.search);
+            params.set('layer', layerName);
+            var qs = params.toString();
+            var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+            window.history.pushState({path: newurl}, '', newurl);
 
             setupState();
             setupDropdowns();
@@ -585,12 +603,12 @@
         };
 
         window.showIntegration = function() {
+            if (!targetLayer) return;
             var sourceUrl = "";
             var integrationText = "";
             if (isPmtiles) {
-                var filepath = targetLayer.path;
-                sourceUrl = "pmtiles://" + window.location.origin + "/data/" + filepath + "?v=" + new Date().getTime();
-                integrationText = `// Remember to register the PMTiles protocol first!
+                sourceUrl = "pmtiles://" + window.location.origin + "/data/" + targetLayer.path;
+                integrationText = `// Register the PMTiles protocol first:
 // maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
 
 "sources": {
@@ -601,7 +619,7 @@
   }
 }`;
             } else {
-                sourceUrl = window.location.origin + "/mvt/webgl_world/" + layerName + "/{z}/{x}/{y}.pbf";
+                sourceUrl = window.location.origin + "/mvt/" + encodeURIComponent(layerName) + "/{z}/{x}/{y}.pbf";
                 integrationText = `"sources": {
   "openmaptiles": {
     "type": "vector",
@@ -610,7 +628,7 @@
   }
 }`;
             }
-            
+
             document.getElementById('integrationCode').innerText = integrationText;
             document.getElementById('integrationModal').style.display = 'block';
         };

@@ -1,2 +1,0 @@
-lato /usr/share/fonts/truetype/Lato-Regular.ttf
-fontawesome /app/static/fa-solid-900.ttf

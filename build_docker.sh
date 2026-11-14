@@ -4,8 +4,8 @@ set -euo pipefail
 # ==============================================================================
 # CVEMAP Unified Docker Image Builder
 # ==============================================================================
-# Builds the single-container CVEMAP image (MapServer + FastAPI + TileServer-GL)
-# in either 'lite' (mount data at runtime) or 'full' (map data baked in) mode.
+# Builds the single-container CVEMAP image (FastAPI + TileServer-GL) in either
+# 'lite' (mount data at runtime) or 'full' (map data baked in) mode.
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,8 +32,8 @@ Targets:
 
 Options for --full:
   --data-dir <rel-path>    Relative directory in repo to bundle into /app/data (default: app/data)
-  --include <f1,f2,...>    Stage only specific .pmtiles/.mbtiles filenames (plus legacy/world)
-                           into the full image instead of copying every archive in app/data/
+  --include <f1,f2,...>    Stage only specific .pmtiles/.mbtiles filenames into the
+                           full image instead of copying every archive in app/data/
 
 General Options:
   --tag <image:tag>        Override output image tag
@@ -46,7 +46,7 @@ Examples:
   # Build full self-contained offline image bundling all of ./app/data:
   ./build_docker.sh --full
 
-  # Build full image bundling only legacy world vectors + a specific PMTiles file:
+  # Build full image bundling only a specific PMTiles archive:
   ./build_docker.sh --full --include monaco-z15.pmtiles --tag cvemap:monaco
 EOF
 }
@@ -80,11 +80,7 @@ prepare_full_data_src() {
 
   STAGE_DIR=".build_stage_data"
   rm -rf "${STAGE_DIR}"
-  mkdir -p "${STAGE_DIR}/legacy" "${STAGE_DIR}/webgl/world"
-
-  if [ -d "${DATA_SRC}/legacy/world" ]; then
-    cp -a "${DATA_SRC}/legacy/world" "${STAGE_DIR}/legacy/world"
-  fi
+  mkdir -p "${STAGE_DIR}"
 
   IFS=',' read -ra FILES <<< "${INCLUDE_ARCHIVES}"
   for raw_item in "${FILES[@]}"; do
