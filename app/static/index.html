@@ -70,17 +70,18 @@
             <img src="/static/sisyphus_logo.jpg" style="max-width: 160px; border-radius: 8px;">
         </div>
         <h3 style="margin-top: 0; text-align: center;">Legacy Viewer</h3>
-        <p style="font-size: 13px; color: #555;">Rendering WMS & XYZ via MapServer.</p>
+        <p style="font-size: 13px; color: #555;">Rendering XYZ &amp; WMS via MapServer &amp; TileServer GL.</p>
 
-        <label for="map-select" style="font-size: 12px; font-weight: bold;">Map Dataset:</label>
-        <select id="map-select" onchange="loadMap(this.value)">
-            <option value="">Loading maps...</option>
+        <label for="backend-select" style="font-size: 12px; font-weight: bold;">Backend:</label>
+        <select id="backend-select" onchange="onBackendChange()">
+            <option value="mapserver">MapServer</option>
+            <option value="tileserver">TileServer GL</option>
         </select>
 
-        <div id="ts-style-wrap" style="display: none;">
-            <label for="ts-style-select" style="font-size: 12px; font-weight: bold;">Map Style:</label>
-            <select id="ts-style-select" onchange="updateFormat()"></select>
-        </div>
+        <label for="basemap-select" style="font-size: 12px; font-weight: bold;">Basemap:</label>
+        <select id="basemap-select" onchange="onBasemapChange()">
+            <option value="">Loading basemaps...</option>
+        </select>
 
         <label for="format-select" style="font-size: 12px; font-weight: bold;">Tile Protocol:</label>
         <select id="format-select" onchange="updateFormat()">
@@ -165,12 +166,83 @@
         var mapsData = {};
         var mapsSettings = {};
         var tileserverStyles = ['bio', 'light', 'dark', 'grayscale', 'white', 'black', 'black_and_white', 'dusk_rose', 'flat', 'iris_bloom', 'rainforest', 'seafoam', 'sol'];
+        var mapServerKeys = [];
+        var lastMapServerId = '';
+        var lastTileServerStyle = 'bio';
 
         function resolveClientTileUrl(externalUrl) {
             if (!externalUrl) return '';
             // Route TileServer URLs through same-origin /tileserver/ proxy so only port 8000 is needed
             var rewritten = externalUrl.replace(/^https?:\/\/\{HOST\}(?::\d+)?\//, '/tileserver/');
             return rewritten.replace('{HOST}', window.location.hostname);
+        }
+
+        function formatStyleTitle(st) {
+            return st.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        function populateBasemapSelect() {
+            var backend = document.getElementById('backend-select').value;
+            var basemapSel = document.getElementById('basemap-select');
+            basemapSel.innerHTML = '';
+
+            if (backend === 'tileserver') {
+                tileserverStyles.forEach(st => {
+                    var opt = document.createElement('option');
+                    opt.value = st;
+                    opt.innerText = formatStyleTitle(st);
+                    if (st === lastTileServerStyle) opt.selected = true;
+                    basemapSel.appendChild(opt);
+                });
+                if (!basemapSel.value && tileserverStyles.length > 0) {
+                    basemapSel.value = tileserverStyles[0];
+                }
+                lastTileServerStyle = basemapSel.value || 'bio';
+            } else {
+                if (mapServerKeys.length === 0) {
+                    basemapSel.innerHTML = '<option value="">No maps available</option>';
+                    return;
+                }
+                mapServerKeys.forEach(mapId => {
+                    var mapInfo = mapsData[mapId];
+                    var opt = document.createElement('option');
+                    opt.value = mapId;
+                    opt.innerText = mapInfo.title || mapId;
+                    if (mapId === lastMapServerId) opt.selected = true;
+                    basemapSel.appendChild(opt);
+                });
+                if (!basemapSel.value) {
+                    basemapSel.value = mapServerKeys[0];
+                }
+                lastMapServerId = basemapSel.value;
+            }
+        }
+
+        function getActiveSelection() {
+            var backend = document.getElementById('backend-select').value;
+            var basemapVal = document.getElementById('basemap-select').value;
+            if (backend === 'tileserver') {
+                return { mapId: 'tileserver_raster', tsStyle: basemapVal || lastTileServerStyle || 'bio' };
+            }
+            return { mapId: basemapVal, tsStyle: null };
+        }
+
+        function onBackendChange() {
+            populateBasemapSelect();
+            var sel = getActiveSelection();
+            if (sel.mapId) loadMap(sel.mapId, sel.tsStyle);
+        }
+
+        function onBasemapChange() {
+            var backend = document.getElementById('backend-select').value;
+            var basemapVal = document.getElementById('basemap-select').value;
+            if (backend === 'tileserver') {
+                lastTileServerStyle = basemapVal || 'bio';
+            } else {
+                lastMapServerId = basemapVal;
+            }
+            var sel = getActiveSelection();
+            if (sel.mapId) loadMap(sel.mapId, sel.tsStyle);
         }
 
         async function init() {
@@ -182,60 +254,53 @@
                 if (Array.isArray(data.tileserver_styles) && data.tileserver_styles.length > 0) {
                     tileserverStyles = data.tileserver_styles;
                 }
-                
-                const select = document.getElementById('map-select');
-                select.innerHTML = '';
-                
-                var mapKeys = Object.keys(mapsData)
-                    .filter(id => !id.startsWith('webgl'))
+                window.mapsConfig = mapsData;
+
+                mapServerKeys = Object.keys(mapsData)
+                    .filter(id => !id.startsWith('webgl') && id !== 'tileserver_raster')
                     .sort((a, b) => (mapsData[a].title || a).localeCompare(mapsData[b].title || b));
-                
-                for (const mapId of mapKeys) {
-                    const mapInfo = mapsData[mapId];
-                    const opt = document.createElement('option');
-                    opt.value = mapId;
-                    opt.innerText = mapInfo.title || mapId;
-                    select.appendChild(opt);
+
+                if (mapServerKeys.length > 0) {
+                    lastMapServerId = mapServerKeys[0];
                 }
-                
-                if (mapKeys.length > 0) {
-                    window.mapsConfig = mapsData;
-                    loadMap(mapKeys[0]);
-                } else {
-                    select.innerHTML = '<option>No maps available</option>';
+                if (mapsData['tileserver_raster']) {
+                    var firstEnabled = (mapsData['tileserver_raster'].layers || []).find(l => l.enabled);
+                    if (firstEnabled && firstEnabled.name) {
+                        lastTileServerStyle = firstEnabled.name;
+                    }
+                }
+
+                var backendSel = document.getElementById('backend-select');
+                backendSel.innerHTML = '';
+                if (mapServerKeys.length > 0) {
+                    var msOpt = document.createElement('option');
+                    msOpt.value = 'mapserver';
+                    msOpt.innerText = 'MapServer';
+                    backendSel.appendChild(msOpt);
+                }
+                if (mapsData['tileserver_raster']) {
+                    var tsOpt = document.createElement('option');
+                    tsOpt.value = 'tileserver';
+                    tsOpt.innerText = 'TileServer GL';
+                    backendSel.appendChild(tsOpt);
+                }
+
+                populateBasemapSelect();
+                var initial = getActiveSelection();
+                if (initial.mapId && mapsData[initial.mapId]) {
+                    loadMap(initial.mapId, initial.tsStyle);
                 }
             } catch(e) {
                 console.error("Error loading maps", e);
             }
         }
 
-        function syncTileServerStyleDropdown(mapId, mapInfo) {
-            var wrap = document.getElementById('ts-style-wrap');
-            var sel = document.getElementById('ts-style-select');
-            if (mapId !== 'tileserver_raster') {
-                wrap.style.display = 'none';
-                return null;
-            }
-            wrap.style.display = 'block';
-            if (sel.options.length === 0) {
-                var defaultStyle = 'bio';
-                var firstEnabled = (mapInfo.layers || []).find(l => l.enabled);
-                if (firstEnabled && firstEnabled.name) defaultStyle = firstEnabled.name;
-                sel.innerHTML = '';
-                tileserverStyles.forEach(st => {
-                    var opt = document.createElement('option');
-                    opt.value = st;
-                    opt.innerText = st.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                    if (st === defaultStyle) opt.selected = true;
-                    sel.appendChild(opt);
-                });
-            }
-            return sel.value || 'bio';
-        }
-
-        function loadMap(mapId) {
+        function loadMap(mapId, selectedTsStyle) {
             const mapInfo = window.mapsConfig[mapId];
             if (!mapInfo) return;
+            if (mapId === 'tileserver_raster' && !selectedTsStyle) {
+                selectedTsStyle = lastTileServerStyle || 'bio';
+            }
 
             currentLayers.forEach(l => map.removeLayer(l));
             currentLayers = [];
@@ -255,7 +320,6 @@
                 document.getElementById('map').style.backgroundColor = '#e0e0e0';
             }
 
-            var selectedTsStyle = syncTileServerStyleDropdown(mapId, mapInfo);
             var format = document.getElementById('format-select').value;
             
             var allActiveLayers = selectedTsStyle
@@ -277,13 +341,13 @@
                         format: 'image/png',
                         transparent: true,
                         tileSize: selectedTsStyle ? 512 : 1024,
-                        attribution: 'MapServer WMS'
+                        attribution: selectedTsStyle ? 'MapServer WMS / TileServer GL (' + selectedTsStyle + ')' : 'MapServer WMS'
                     });
                     wmsLayer.addTo(map);
                     currentLayers.push(wmsLayer);
                 }
             } else if (selectedTsStyle) {
-                var tsUrl = '/tileserver/styles/' + selectedTsStyle + '/{z}/{x}/{y}.png?v=2';
+                var tsUrl = '/tileserver/styles/' + selectedTsStyle + '/{z}/{x}/{y}.png?v=3';
                 var tsLayer = L.tileLayer(tsUrl, {
                     minZoom: 0,
                     maxZoom: 18,
@@ -328,8 +392,8 @@
             var minimapMinZoom = 0;
             var minimapMaxNativeZoom = 18;
             if (refMapId === 'tileserver_raster') {
-                var miniStyle = selectedTsStyle || 'bio';
-                minimapUrl = '/tileserver/styles/' + miniStyle + '/{z}/{x}/{y}.png?v=2';
+                var miniStyle = selectedTsStyle || lastTileServerStyle || 'bio';
+                minimapUrl = '/tileserver/styles/' + miniStyle + '/{z}/{x}/{y}.png?v=3';
                 minimapMinZoom = 0;
                 minimapMaxNativeZoom = 18;
             } else if (refActiveLayers.length === 0 && refMbtilesLayers.length > 0) {
@@ -368,17 +432,18 @@
         }
         
         function updateFormat() {
-            var mapId = document.getElementById('map-select').value;
-            if (mapId) loadMap(mapId);
+            var sel = getActiveSelection();
+            if (sel.mapId) loadMap(sel.mapId, sel.tsStyle);
         }
 
         function showIntegrationLinks() {
-            var mapId = document.getElementById('map-select').value;
+            var sel = getActiveSelection();
+            var mapId = sel.mapId;
             if (!mapId || !window.mapsConfig || !window.mapsConfig[mapId]) return;
             
             var mapInfo = window.mapsConfig[mapId];
             var activeLayers = (mapId === 'tileserver_raster')
-                ? [document.getElementById('ts-style-select').value || 'bio']
+                ? [sel.tsStyle || 'bio']
                 : mapInfo.layers.filter(l => l.enabled).map(l => l.name).reverse();
             var layersStr = activeLayers.length > 0 ? activeLayers.join(',') : 'none';
             

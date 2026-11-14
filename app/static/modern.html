@@ -51,7 +51,7 @@
         <label for="layer-select" style="font-size: 12px; font-weight: bold;">Map Dataset:</label>
         <select id="layer-select" onchange="changeLayer(this.value)"></select>
 
-        <label for="style-select" style="font-size: 12px; font-weight: bold;">Map Style:</label>
+        <label for="style-select" style="font-size: 12px; font-weight: bold;">Basemap:</label>
         <select id="style-select" onchange="changeStyle(this.value)"></select>
         
         <button class="btn" onclick="showIntegration()">🔗 Integration Links</button>
@@ -303,7 +303,7 @@
                 destroyAllMaps();
                 var hv = parseHashView() || { zoom: 4, lat: 0, lng: 0 };
                 var theme = styleUrlToTileServerTheme(styleUrl);
-                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=2';
+                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=3';
 
                 fallbackMap = L.map('map', {
                     zoomControl: false,
@@ -547,7 +547,7 @@
         window.changeStyle = function(styleUrl) {
             if (usingFallback && fallbackMap) {
                 var theme = styleUrlToTileServerTheme(styleUrl);
-                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=2';
+                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=3';
                 if (fallbackTileLayer) fallbackTileLayer.setUrl(tileUrl);
                 if (fallbackMiniLayer) fallbackMiniLayer.setUrl(tileUrl);
                 return;
