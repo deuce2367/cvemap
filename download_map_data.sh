@@ -5,11 +5,13 @@ set -euo pipefail
 # CVEMAP Map Source Data Downloader
 # ==============================================================================
 # Friendly bootstrap utility to download ready-to-serve Protomaps PMTiles
-# (full planet, named regions, or custom bounding boxes) or raw Geofabrik OSM
-# PBFs / Planetiler auxiliary datasets for custom vector tile compilation.
+# (full planet, named regions, or custom bounding boxes) with automatic HTTP/1.1
+# chunked retry, byte-level resume, and deep integrity verification, or raw
+# Geofabrik OSM PBFs / Planetiler auxiliary datasets.
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HELPER_PY="${SCRIPT_DIR}/scripts/pmtiles_helper.py"
 DATA_DIR="${SCRIPT_DIR}/app/data"
 SOURCES_DIR="${SCRIPT_DIR}/data/sources"
 GO_PMTILES_VERSION="1.28.1"
@@ -21,6 +23,8 @@ OUTPUT_NAME=""
 BUILD_DATE=""
 SOURCE_URL=""
 OSM_PBF_REGION=""
+VERIFY_FILE=""
+FORCE_DOWNLOAD=false
 DRY_RUN=false
 LIST_REGIONS=false
 FETCH_PLANETILER_SOURCES=false
@@ -51,6 +55,11 @@ Usage:
 
   Running './download_map_data.sh' with no region or workflow flags defaults to
   downloading the global Protomaps basemap ('--region planet', zoom 0-12, ~15 GB).
+
+  Downloads are automatically routed through a local HTTP/1.1 range-slicing proxy
+  (32 MiB chunks + exponential-backoff retry to prevent CDN HTTP/2 stream resets),
+  staged to '<output>.part', resumable across interruptions, and verified before
+  being finalized.
 
 --------------------------------------------------------------------------------
 WHICH WORKFLOW SHOULD I CHOOSE?
@@ -84,8 +93,8 @@ CHOOSING '--maxzoom' (DETAIL vs. DOWNLOAD SIZE)
   Viewers still let you zoom in past maxzoom by scaling the highest-zoom tiles.
     z10  Regional / highway overview       (~1.5 GB for full planet)
     z12  City, town & arterial road detail (~15 GB  for full planet - DEFAULT)
-    z13  Neighborhood & secondary streets  (default for large countries)
-    z14  Street-level & building footprints (default for metro presets; ~60 GB+ planet)
+    z13  Neighborhood & secondary streets  (~34 GB  for full planet)
+    z14  Street-level & building footprints (~64 GB  for full planet)
     z15  Finest building & POI detail       (default for tiny presets like monaco)
 
 --------------------------------------------------------------------------------
@@ -108,10 +117,15 @@ OPTIONS
                              (e.g. 'dc_metro' -> dc_metro.pmtiles). Defaults to
                              '<region>-z<maxzoom>.pmtiles'.
     --build-date <YYYYMMDD>  Pin a specific Protomaps daily build date instead of
-                             auto-detecting the latest published build. Useful
-                             for reproducible team/offline builds.
+                             auto-detecting the latest published build. Also use
+                             this when resuming/repairing an older crashed file.
     --source-url <url>       Extract from a custom remote or local PMTiles URL/path
                              instead of https://build.protomaps.com/.
+    --verify <file.pmtiles>  Run a deep integrity check (header, sparse-hole scan,
+                             directory tree, and tail tile decompression) on an
+                             existing .pmtiles file and exit.
+    --force                  Re-download from scratch even if a verified archive
+                             already exists at the destination path.
 
   Advanced Custom Tile Compilation Inputs (for ./build_custom_map.sh):
     --osm-pbf <geofabrik>    Download a raw Geofabrik OpenStreetMap extract into
@@ -135,21 +149,18 @@ EXAMPLES
   # 1. Default: Full global planet basemap (zoom 0-12, ~15 GB):
   ./download_map_data.sh
 
-  # 2. Lighter global planet basemap (zoom 0-10, ~1.5 GB):
-  ./download_map_data.sh --maxzoom 10
+  # 2. Resume or repair an interrupted planet download (only fetches missing bytes):
+  ./download_map_data.sh --maxzoom 14 --build-date 20261114
 
-  # 3. Fast smoke-test extract (~2 MB, finishes in seconds):
+  # 3. Verify integrity of any downloaded .pmtiles archive:
+  ./download_map_data.sh --verify app/data/planet-z14.pmtiles
+
+  # 4. Fast smoke-test extract (~2 MB, finishes in seconds):
   ./download_map_data.sh --region monaco
 
-  # 4. High-detail metro or regional basemap:
+  # 5. High-detail metro or regional basemap:
   ./download_map_data.sh --region sf-bay --maxzoom 14
-  ./download_map_data.sh --region europe --maxzoom 12
-
-  # 5. Custom bounding box (Washington, D.C. metro area):
   ./download_map_data.sh --bbox -77.25,38.79,-76.90,39.02 --maxzoom 14 --name dc_metro
-
-  # 6. Advanced: Fetch raw OSM PBF + Planetiler inputs for custom Java builds:
-  ./download_map_data.sh --osm-pbf europe/monaco --planetiler-sources
 EOF
 }
 
@@ -170,6 +181,8 @@ run_cmd() {
     "$@"
   fi
 }
+
+CURL_RESILIENT=(curl --http1.1 -fL --retry 8 --retry-delay 3 --retry-all-errors)
 
 ensure_pmtiles_cli() {
   if [ -x "${SCRIPT_DIR}/pmtiles" ]; then
@@ -202,13 +215,13 @@ ensure_pmtiles_cli() {
 
   archive_url="https://github.com/protomaps/go-pmtiles/releases/download/v${GO_PMTILES_VERSION}/go-pmtiles_${GO_PMTILES_VERSION}_${os}_${arch}.tar.gz"
   if [ "$DRY_RUN" = true ]; then
-    echo "[dry-run] curl -fSL ${archive_url} | tar -xz -C ${SCRIPT_DIR}/bin pmtiles" >&2
+    echo "[dry-run] ${CURL_RESILIENT[*]} -sS ${archive_url} | tar -xz -C ${SCRIPT_DIR}/bin pmtiles" >&2
     echo "${SCRIPT_DIR}/bin/pmtiles"
     return
   fi
 
   mkdir -p "${SCRIPT_DIR}/bin"
-  curl -fSL "${archive_url}" | tar -xz -C "${SCRIPT_DIR}/bin" pmtiles
+  "${CURL_RESILIENT[@]}" -sS "${archive_url}" | tar -xz -C "${SCRIPT_DIR}/bin" pmtiles
   chmod +x "${SCRIPT_DIR}/bin/pmtiles"
   echo "${SCRIPT_DIR}/bin/pmtiles"
 }
@@ -224,7 +237,7 @@ resolve_latest_protomaps_url() {
   fi
   echo "==> Resolving latest Protomaps daily build metadata..." >&2
   local latest_key
-  latest_key="$(curl -fsSL https://build-metadata.protomaps.dev/builds.json | grep -oE '"key":"[0-9]{8}\.pmtiles"' | tail -n 1 | cut -d'"' -f4 || true)"
+  latest_key="$("${CURL_RESILIENT[@]}" -sS https://build-metadata.protomaps.dev/builds.json | grep -oE '"key":"[0-9]{8}\.pmtiles"' | tail -n 1 | cut -d'"' -f4 || true)"
   if [ -z "$latest_key" ]; then
     echo "Error: Could not auto-detect latest Protomaps build. Pass --build-date YYYYMMDD." >&2
     exit 1
@@ -244,9 +257,9 @@ download_osm_pbf() {
   base_name="$(basename "${region_slug}")-latest.osm.pbf"
   local url="https://download.geofabrik.de/${region_slug}-latest.osm.pbf"
   mkdir -p "${SOURCES_DIR}"
-  echo "==> Downloading Geofabrik OSM PBF: ${url}"
+  echo "==> Downloading Geofabrik OSM PBF (resumable): ${url}"
   echo "    Destination: ${SOURCES_DIR}/${base_name}"
-  run_cmd curl -fL --progress-bar "${url}" -o "${SOURCES_DIR}/${base_name}"
+  run_cmd "${CURL_RESILIENT[@]}" -C - --progress-bar "${url}" -o "${SOURCES_DIR}/${base_name}"
   echo "==> Saved ${SOURCES_DIR}/${base_name}"
 }
 
@@ -262,16 +275,13 @@ download_planetiler_sources() {
   for u in "${urls[@]}"; do
     local fname
     fname="$(basename "$u")"
-    if [ -f "${SOURCES_DIR}/${fname}" ]; then
-      echo "    [skip] ${fname} already exists."
-    else
-      echo "    Fetching ${fname} ..."
-      run_cmd curl -fL --progress-bar "$u" -o "${SOURCES_DIR}/${fname}"
-    fi
+    echo "    Fetching / resuming ${fname} ..."
+    run_cmd "${CURL_RESILIENT[@]}" -C - --progress-bar "$u" -o "${SOURCES_DIR}/${fname}"
   done
 }
 
 PMTILES_OPT_SET=false
+PINNED_SOURCE=false
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -279,8 +289,10 @@ while [ "$#" -gt 0 ]; do
     --bbox)                BBOX="$2"; PMTILES_OPT_SET=true; shift 2 ;;
     --maxzoom)             MAXZOOM="$2"; PMTILES_OPT_SET=true; shift 2 ;;
     --name|--output)       OUTPUT_NAME="$2"; PMTILES_OPT_SET=true; shift 2 ;;
-    --build-date)          BUILD_DATE="$2"; PMTILES_OPT_SET=true; shift 2 ;;
-    --source-url)          SOURCE_URL="$2"; PMTILES_OPT_SET=true; shift 2 ;;
+    --build-date)          BUILD_DATE="$2"; PINNED_SOURCE=true; PMTILES_OPT_SET=true; shift 2 ;;
+    --source-url)          SOURCE_URL="$2"; PINNED_SOURCE=true; PMTILES_OPT_SET=true; shift 2 ;;
+    --verify)              VERIFY_FILE="$2"; shift 2 ;;
+    --force)               FORCE_DOWNLOAD=true; shift ;;
     --data-dir)            DATA_DIR="$2"; shift 2 ;;
     --osm-pbf)             OSM_PBF_REGION="$2"; shift 2 ;;
     --planetiler-sources)  FETCH_PLANETILER_SOURCES=true; shift ;;
@@ -294,6 +306,11 @@ done
 if [ "$LIST_REGIONS" = true ]; then
   list_regions
   exit 0
+fi
+
+if [ -n "$VERIFY_FILE" ]; then
+  PMTILES_BIN="$(ensure_pmtiles_cli)"
+  exec python3 "${HELPER_PY}" verify "${VERIFY_FILE}" --pmtiles-bin "${PMTILES_BIN}"
 fi
 
 DID_OTHER_WORK=false
@@ -350,13 +367,25 @@ if [ -n "$REGION" ] || [ -n "$BBOX" ]; then
   PMTILES_BIN="$(ensure_pmtiles_cli)"
   REMOTE_URL="$(resolve_latest_protomaps_url)"
 
-  EXTRACT_ARGS=("extract" "${REMOTE_URL}" "${DEST_PATH}" "--maxzoom=${FINAL_ZOOM}")
+  HELPER_ARGS=(
+    "extract"
+    "--source-url" "${REMOTE_URL}"
+    "--output" "${DEST_PATH}"
+    "--maxzoom" "${FINAL_ZOOM}"
+    "--pmtiles-bin" "${PMTILES_BIN}"
+  )
   if [ -n "$BBOX" ]; then
-    EXTRACT_ARGS+=("--bbox=${BBOX}")
+    HELPER_ARGS+=("--bbox" "${BBOX}")
+  fi
+  if [ "$PINNED_SOURCE" = true ]; then
+    HELPER_ARGS+=("--pinned-source")
+  fi
+  if [ "$FORCE_DOWNLOAD" = true ]; then
+    HELPER_ARGS+=("--force")
   fi
 
   echo "=================================================================="
-  echo " Protomaps PMTiles Extraction"
+  echo " Protomaps PMTiles Extraction (Resilient & Resumable)"
   echo "   Source  : ${REMOTE_URL}"
   echo "   Region  : ${REGION:-custom}"
   [ -n "$BBOX" ] && echo "   BBox    : ${BBOX}"
@@ -364,9 +393,9 @@ if [ -n "$REGION" ] || [ -n "$BBOX" ]; then
   echo "   Output  : ${DEST_PATH}"
   echo "=================================================================="
 
-  run_cmd "${PMTILES_BIN}" "${EXTRACT_ARGS[@]}"
+  run_cmd python3 "${HELPER_PY}" "${HELPER_ARGS[@]}"
   echo ""
-  echo "==> Map archive ready: ${DEST_PATH}"
+  echo "==> Map archive ready & verified: ${DEST_PATH}"
 fi
 
 cat <<EOF

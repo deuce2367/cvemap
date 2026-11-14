@@ -32,9 +32,12 @@ Use `./download_map_data.sh` to fetch ready-to-serve Protomaps `.pmtiles` vector
 
 # Custom bounding box (minLon,minLat,maxLon,maxLat)
 ./download_map_data.sh --bbox -77.25,38.79,-76.90,39.02 --maxzoom 14 --name dc_metro
+
+# Verify integrity of any downloaded .pmtiles archive
+./download_map_data.sh --verify app/data/planet-z12.pmtiles
 ```
 
-> Any `.pmtiles` or vector `.mbtiles` placed under `app/data/` is **automatically discovered** on the fly—no manual configuration required.
+> Downloads stream over resilient chunked HTTP/1.1 with automatic retry, `.part` staging, byte-level resume across interruptions, and post-download integrity verification. Any `.pmtiles` or vector `.mbtiles` placed under `app/data/` is **automatically discovered** on the fly—no manual configuration required.
 
 ### 3. Build the Unified Docker Image (`lite` or `full`)
 Both targets run **FastAPI + Xvfb + TileServer-GL** in a single container:

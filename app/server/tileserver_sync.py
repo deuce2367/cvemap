@@ -135,11 +135,27 @@ def inspect_vector_mbtiles(filepath: str) -> dict | None:
     return result
 
 
+def _has_valid_pmtiles_magic(filepath: str) -> bool:
+    try:
+        with open(filepath, "rb") as f:
+            hdr = f.read(8)
+        if len(hdr) == 8 and hdr[:7] == b"PMTiles" and hdr[7] == 3:
+            return True
+        logger.warning("Skipping incomplete or corrupted PMTiles file (invalid header): %s", filepath)
+        return False
+    except OSError:
+        return False
+
+
 def discover_pmtiles_files(data_dir: str) -> list[str]:
     if not os.path.isdir(data_dir):
         return []
     all_files = glob.glob(os.path.join(data_dir, "**", "*.pmtiles"), recursive=True)
-    return sorted(p for p in all_files if os.path.isfile(p) and not _is_ignored_data_path(p, data_dir))
+    return sorted(
+        p
+        for p in all_files
+        if os.path.isfile(p) and not _is_ignored_data_path(p, data_dir) and _has_valid_pmtiles_magic(p)
+    )
 
 
 def select_primary_pmtiles(data_dir: str) -> str:
