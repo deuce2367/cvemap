@@ -166,34 +166,48 @@
                 layerSelect.innerHTML = `<option value="${layerName}">${layerName}</option>`;
             }
 
-            // Populate Style Dropdown
+            // Populate Basemap Style Dropdown (alpha-sorted, defaulting to Protomaps Light)
             var select = document.getElementById('style-select');
+            var prevValue = select.value;
             var html = "";
             
             if (isPmtiles) {
-                // Protomaps schema themes
-                html += '<option value="/static/vendor/protomaps-themes/light.json">Protomaps Light</option><option value="/static/vendor/protomaps-themes/grayscale.json">Protomaps Grayscale</option>';
-                html += '<option value="/static/vendor/protomaps-themes/dark.json">Protomaps Dark</option>';
-                html += '<option value="/static/vendor/protomaps-themes/white.json">Protomaps White</option>';
-                html += '<option value="/static/vendor/protomaps-themes/black.json">Protomaps Black</option>';
-                // Additional community flavors
-                html += '<option value="/static/vendor/protomaps-themes/bio.json">Protomaps Bio</option>';
-                html += '<option value="/static/vendor/protomaps-themes/black_and_white.json">Protomaps Black & White</option>';
-                html += '<option value="/static/vendor/protomaps-themes/dusk_rose.json">Protomaps Dusk Rose</option>';
-                html += '<option value="/static/vendor/protomaps-themes/flat.json">Protomaps Flat</option>';
-                html += '<option value="/static/vendor/protomaps-themes/iris_bloom.json">Protomaps Iris Bloom</option>';
-                html += '<option value="/static/vendor/protomaps-themes/rainforest.json">Protomaps Rainforest</option>';
-                html += '<option value="/static/vendor/protomaps-themes/seafoam.json">Protomaps Seafoam</option>';
-                html += '<option value="/static/vendor/protomaps-themes/sol.json">Protomaps Sol</option>';
+                var protomapsOptions = [
+                    { url: '/static/vendor/protomaps-themes/bio.json', title: 'Protomaps Bio' },
+                    { url: '/static/vendor/protomaps-themes/black.json', title: 'Protomaps Black' },
+                    { url: '/static/vendor/protomaps-themes/black_and_white.json', title: 'Protomaps Black & White' },
+                    { url: '/static/vendor/protomaps-themes/dark.json', title: 'Protomaps Dark' },
+                    { url: '/static/vendor/protomaps-themes/dusk_rose.json', title: 'Protomaps Dusk Rose' },
+                    { url: '/static/vendor/protomaps-themes/flat.json', title: 'Protomaps Flat' },
+                    { url: '/static/vendor/protomaps-themes/grayscale.json', title: 'Protomaps Grayscale' },
+                    { url: '/static/vendor/protomaps-themes/iris_bloom.json', title: 'Protomaps Iris Bloom' },
+                    { url: '/static/vendor/protomaps-themes/light.json', title: 'Protomaps Light' },
+                    { url: '/static/vendor/protomaps-themes/rainforest.json', title: 'Protomaps Rainforest' },
+                    { url: '/static/vendor/protomaps-themes/seafoam.json', title: 'Protomaps Seafoam' },
+                    { url: '/static/vendor/protomaps-themes/sol.json', title: 'Protomaps Sol' },
+                    { url: '/static/vendor/protomaps-themes/white.json', title: 'Protomaps White' }
+                ];
+                protomapsOptions.sort(function(a, b) { return a.title.localeCompare(b.title); });
+                var defaultUrl = '/static/vendor/protomaps-themes/light.json';
+                var activeUrl = protomapsOptions.some(function(o) { return o.url === prevValue; }) ? prevValue : defaultUrl;
+                protomapsOptions.forEach(function(o) {
+                    var selAttr = (o.url === activeUrl) ? ' selected' : '';
+                    html += '<option value="' + o.url + '"' + selAttr + '>' + o.title + '</option>';
+                });
             } else {
-                // OpenMapTiles schema themes
-                html += '';
-                html += '';
-                html += '';
-                html += '<option value="/static/vendor/osm-liberty/style.json">OSM Liberty (Classic OSM)</option>';
-                html += '<option value="/static/vendor/carto-light/style.json">Positron (Light)</option>';
-                html += '<option value="/static/vendor/carto-dark/style.json">Dark Matter (Dark)</option>';
-                html += '<option value="/static/vendor/carto-color/style.json">OSM Bright (Colorful)</option>';
+                // OpenMapTiles schema themes (alpha-sorted)
+                var omtOptions = [
+                    { url: '/static/vendor/carto-dark/style.json', title: 'Dark Matter (Dark)' },
+                    { url: '/static/vendor/carto-color/style.json', title: 'OSM Bright (Colorful)' },
+                    { url: '/static/vendor/osm-liberty/style.json', title: 'OSM Liberty (Classic OSM)' },
+                    { url: '/static/vendor/carto-light/style.json', title: 'Positron (Light)' }
+                ];
+                var defaultOmt = '/static/vendor/osm-liberty/style.json';
+                var activeOmt = omtOptions.some(function(o) { return o.url === prevValue; }) ? prevValue : defaultOmt;
+                omtOptions.forEach(function(o) {
+                    var selAttr = (o.url === activeOmt) ? ' selected' : '';
+                    html += '<option value="' + o.url + '"' + selAttr + '>' + o.title + '</option>';
+                });
             }
             select.innerHTML = html;
         }

@@ -334,14 +334,14 @@ def scan_data_directories():
             "bg_color": "255 255 255",
             "layers": [
                 {
-                    "name": "bio",
+                    "name": "light",
                     "path": "",
                     "type": "RASTER",
                     "enabled": True,
                     "is_mbtiles": True,
                     "minZoom": 0,
                     "maxZoom": 18,
-                    "external_url": "/tileserver/styles/bio/{z}/{x}/{y}.png"
+                    "external_url": "/tileserver/styles/light/{z}/{x}/{y}.png"
                 }
             ]
         }
