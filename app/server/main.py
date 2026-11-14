@@ -102,7 +102,6 @@ def api_get_maps() -> JSONResponse:
             "datasets": datasets,
             "primary_dataset": primary_dataset,
             "tileserver_styles": TILESERVER_STYLES,
-            "maps": {"webgl_world": {"title": "Vector Datasets", "layers": datasets}},
         }
     )
 
@@ -128,13 +127,6 @@ def tileserver_proxy(path: str, request: Request) -> Response:
 
 @app.get("/xyz/{style}/{z}/{x}/{y}.png")
 def xyz_style_endpoint(style: str, z: int, x: int, y: int) -> Response:
-    style_id = style if style in TILESERVER_STYLES else "light"
-    num_tiles = max(1, 1 << z)
-    return proxy_internal_url(f"{TILESERVER_INTERNAL_URL}/styles/{style_id}/{z}/{x % num_tiles}/{y}.png")
-
-
-@app.get("/xyz/{map_id}/{style}/{z}/{x}/{y}.png")
-def xyz_legacy_alias_endpoint(map_id: str, style: str, z: int, x: int, y: int) -> Response:
     style_id = style if style in TILESERVER_STYLES else "light"
     num_tiles = max(1, 1 << z)
     return proxy_internal_url(f"{TILESERVER_INTERNAL_URL}/styles/{style_id}/{z}/{x % num_tiles}/{y}.png")
@@ -477,11 +469,6 @@ def wms_root_endpoint(request: Request) -> Response:
     return _handle_wms_request(request)
 
 
-@app.get("/wms/{map_id}")
-def wms_alias_endpoint(map_id: str, request: Request) -> Response:
-    return _handle_wms_request(request)
-
-
 # ==============================================================================
 # Vector MBTiles MVT Endpoint (for OpenMapTiles / Planetiler .mbtiles archives)
 # ==============================================================================
@@ -518,9 +505,4 @@ def _serve_mvt_tile(layer: str, z: int, x: int, y: int) -> Response:
 
 @app.get("/mvt/{layer}/{z}/{x}/{y}.pbf")
 def mvt_endpoint(layer: str, z: int, x: int, y: int) -> Response:
-    return _serve_mvt_tile(layer, z, x, y)
-
-
-@app.get("/mvt/{map_id}/{layer}/{z}/{x}/{y}.pbf")
-def mvt_legacy_alias_endpoint(map_id: str, layer: str, z: int, x: int, y: int) -> Response:
     return _serve_mvt_tile(layer, z, x, y)

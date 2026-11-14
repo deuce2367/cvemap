@@ -41,6 +41,62 @@ def _is_ignored_data_path(path: str, data_dir: str) -> bool:
     return any(p.startswith(".") or p == "legacy" for p in parts)
 
 
+def migrate_data_directory(data_dir: str) -> None:
+    """Flatten legacy `webgl/` archive subdirectories into `data_dir` and prune obsolete MapServer artifacts."""
+    if not os.path.isdir(data_dir):
+        return
+
+    # 1. Move any .pmtiles / .mbtiles nested under obsolete `webgl/` up to top-level `data_dir`
+    webgl_dir = os.path.join(data_dir, "webgl")
+    if os.path.isdir(webgl_dir):
+        for ext in ("*.pmtiles", "*.mbtiles"):
+            for src in sorted(glob.glob(os.path.join(webgl_dir, "**", ext), recursive=True)):
+                if not os.path.isfile(src):
+                    continue
+                dst = os.path.join(data_dir, os.path.basename(src))
+                if not os.path.exists(dst):
+                    try:
+                        os.replace(src, dst)
+                        logger.info("Migrated %s -> %s", src, dst)
+                    except OSError as exc:
+                        logger.warning("Could not migrate %s: %s", src, exc)
+        # Prune empty directories under webgl/
+        for root, dirs, files in os.walk(webgl_dir, topdown=False):
+            if not dirs and not files:
+                try:
+                    os.rmdir(root)
+                except OSError:
+                    pass
+
+    # 2. Remove obsolete MapServer generated files (.map, .gdal_wms_*.xml, old MapServer config.json)
+    for pattern in ("*.map", ".gdal_wms_*.xml"):
+        for stale in glob.glob(os.path.join(data_dir, pattern)):
+            try:
+                os.remove(stale)
+            except OSError:
+                pass
+
+    old_cfg = os.path.join(data_dir, "config.json")
+    if os.path.isfile(old_cfg):
+        try:
+            with open(old_cfg, "r") as f:
+                parsed = json.load(f)
+            if isinstance(parsed, dict) and "maps" in parsed:
+                os.remove(old_cfg)
+        except Exception:
+            pass
+
+    # 3. Remove empty legacy/ directories if present
+    legacy_dir = os.path.join(data_dir, "legacy")
+    if os.path.isdir(legacy_dir):
+        for root, dirs, files in os.walk(legacy_dir, topdown=False):
+            if not dirs and not files:
+                try:
+                    os.rmdir(root)
+                except OSError:
+                    pass
+
+
 def inspect_pmtiles(filepath: str) -> dict:
     """Read minZoom, maxZoom, bounds, version, and schema prefix from a PMTiles v3 header."""
     try:
@@ -261,6 +317,7 @@ def sync_tileserver_runtime(
         return ""
 
     os.makedirs(data_dir, exist_ok=True)
+    migrate_data_directory(data_dir)
     os.makedirs(os.path.join(runtime_dir, "styles"), exist_ok=True)
     primary_pmtiles = select_primary_pmtiles(data_dir)
 

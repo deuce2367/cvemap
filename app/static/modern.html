@@ -123,9 +123,7 @@
         fetch('/api/maps?' + new Date().getTime())
             .then(function(res) { return res.json(); })
             .then(function(config) {
-                datasets = Array.isArray(config.datasets)
-                    ? config.datasets
-                    : ((config.maps && config.maps.webgl_world && config.maps.webgl_world.layers) || []);
+                datasets = Array.isArray(config.datasets) ? config.datasets : [];
                 setupState();
                 setupDropdowns();
                 initMap();

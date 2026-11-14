@@ -77,6 +77,22 @@ DOCKER_ARGS=(
 
 if [ "${MODE}" = "lite" ]; then
   mkdir -p "${DATA_DIR}"
+  # Automatically flatten any archives from obsolete webgl/ subdir & remove stale MapServer artifacts
+  if [ -d "${DATA_DIR}/webgl" ]; then
+    while IFS= read -r -d '' archive; do
+      base="$(basename "${archive}")"
+      if [ ! -e "${DATA_DIR}/${base}" ]; then
+        echo "==> Migrating ${archive} -> ${DATA_DIR}/${base}"
+        mv "${archive}" "${DATA_DIR}/${base}"
+      fi
+    done < <(find "${DATA_DIR}/webgl" -type f \( -name "*.pmtiles" -o -name "*.mbtiles" \) -print0)
+    find "${DATA_DIR}/webgl" -depth -type d -empty -delete 2>/dev/null || true
+  fi
+  rm -f "${DATA_DIR}"/*.map "${DATA_DIR}"/.gdal_wms_*.xml "${DATA_DIR}/config.json" 2>/dev/null || true
+  if [ -d "${DATA_DIR}/legacy" ]; then
+    echo "==> Removing obsolete MapServer legacy/ directory (${DATA_DIR}/legacy) ..."
+    rm -rf "${DATA_DIR}/legacy" 2>/dev/null || true
+  fi
   DOCKER_ARGS+=("-v" "$(cd "${DATA_DIR}" && pwd):/app/data")
 fi
 
