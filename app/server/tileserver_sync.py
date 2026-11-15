@@ -1519,9 +1519,20 @@ def _adapt_openmaptiles_style_to_protomaps(
                 elif finfo["neg_capital"]:
                     lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"], ["!", cap_expr]]
                 elif "city_large" in lid or (finfo["rank_max"] is not None and has_city_large):
-                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"], [">=", ["coalesce", ["get", k_pop], 0], 11]]
+                    lyr["filter"] = [
+                        "all",
+                        ["==", ["get", k_kind], "locality"],
+                        ["==", ["get", k_detail], "city"],
+                        ["any", cap_expr, [">=", ["coalesce", ["get", k_pop], 0], 12]],
+                    ]
                 elif has_city_large:
-                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"], ["<", ["coalesce", ["get", k_pop], 9], 11]]
+                    lyr["filter"] = [
+                        "all",
+                        ["==", ["get", k_kind], "locality"],
+                        ["==", ["get", k_detail], "city"],
+                        ["!", cap_expr],
+                        ["<", ["coalesce", ["get", k_pop], 9], 12],
+                    ]
                 else:
                     lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"]]
             elif "town" in classes or "town" in lid:

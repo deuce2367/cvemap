@@ -1660,6 +1660,7 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
+      "minzoom": 7,
       "maxzoom": 15,
       "filter": [
         "all",
@@ -1711,7 +1712,27 @@
           0.5,
           0.2
         ],
-        "text-size": 10,
+        "text-size": {
+          "base": 1.2,
+          "stops": [
+            [
+              7,
+              8.5
+            ],
+            [
+              10,
+              10
+            ],
+            [
+              13,
+              12
+            ],
+            [
+              15,
+              13
+            ]
+          ]
+        },
         "text-transform": "uppercase",
         "visibility": "visible"
       },
@@ -1731,6 +1752,7 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
+      "minzoom": 5,
       "maxzoom": 14,
       "filter": [
         "all",
@@ -1770,14 +1792,34 @@
         },
         "text-field": "{name:latin}\n{name:nonlatin}",
         "text-font": [
-          "Open Sans Semi Bold"
+          "Open Sans Regular"
         ],
         "text-justify": "left",
         "text-offset": [
           0.5,
           0.2
         ],
-        "text-size": 10.5,
+        "text-size": {
+          "base": 1.2,
+          "stops": [
+            [
+              5,
+              9
+            ],
+            [
+              8,
+              11
+            ],
+            [
+              11,
+              13
+            ],
+            [
+              13,
+              14.5
+            ]
+          ]
+        },
         "text-transform": "uppercase",
         "visibility": "visible"
       },
@@ -1797,7 +1839,8 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 12,
+      "minzoom": 3,
+      "maxzoom": 13,
       "filter": [
         "all",
         [
@@ -1843,7 +1886,31 @@
           0.5,
           0.2
         ],
-        "text-size": 14,
+        "text-size": {
+          "base": 1.2,
+          "stops": [
+            [
+              3,
+              9.5
+            ],
+            [
+              5,
+              11
+            ],
+            [
+              7,
+              13
+            ],
+            [
+              10,
+              15.5
+            ],
+            [
+              12,
+              17
+            ]
+          ]
+        },
         "text-transform": "uppercase",
         "visibility": "visible"
       },
@@ -1863,7 +1930,8 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 12,
+      "minzoom": 3,
+      "maxzoom": 10,
       "filter": [
         "all",
         [
@@ -1882,7 +1950,24 @@
         "text-font": [
           "Open Sans Regular"
         ],
-        "text-size": 10,
+        "text-letter-spacing": 0.08,
+        "text-size": {
+          "base": 1.2,
+          "stops": [
+            [
+              3,
+              8.5
+            ],
+            [
+              6,
+              10.5
+            ],
+            [
+              9,
+              12.5
+            ]
+          ]
+        },
         "text-transform": "uppercase",
         "visibility": "visible"
       },
@@ -1902,7 +1987,7 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "all",
         [
@@ -1925,16 +2010,25 @@
         "text-font": [
           "Open Sans Light Italic"
         ],
+        "text-letter-spacing": 0.05,
         "text-size": {
-          "base": 1,
+          "base": 1.2,
           "stops": [
             [
-              0,
-              9
+              2,
+              10
+            ],
+            [
+              4,
+              12
             ],
             [
               6,
-              11
+              14.5
+            ],
+            [
+              8,
+              17
             ]
           ]
         },
@@ -1968,7 +2062,7 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 8,
+      "maxzoom": 9,
       "filter": [
         "all",
         [
@@ -1994,18 +2088,27 @@
       "layout": {
         "text-field": "{name:latin}",
         "text-font": [
-          "Open Sans Regular"
+          "Open Sans Semi Bold"
         ],
+        "text-letter-spacing": 0.06,
         "text-size": {
-          "base": 1,
+          "base": 1.2,
           "stops": [
             [
-              0,
-              10
+              2,
+              10.5
+            ],
+            [
+              4,
+              13
             ],
             [
               6,
-              12
+              16
+            ],
+            [
+              8,
+              19
             ]
           ]
         },
@@ -2027,7 +2130,7 @@
           ]
         },
         "text-halo-color": "rgba(18, 24, 38, 0.9)",
-        "text-halo-width": 1.4,
+        "text-halo-width": 1.5,
         "text-opacity": 1
       }
     },
@@ -2039,7 +2142,7 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 6,
+      "maxzoom": 9,
       "filter": [
         "all",
         [
@@ -2066,22 +2169,27 @@
         "text-anchor": "center",
         "text-field": "{name:latin}",
         "text-font": [
-          "Open Sans Semi Bold"
+          "Open Sans Bold"
         ],
+        "text-letter-spacing": 0.08,
         "text-size": {
-          "base": 1.4,
+          "base": 1.2,
           "stops": [
             [
-              0,
-              10
+              1,
+              11
             ],
             [
               3,
-              12
+              14
             ],
             [
-              4,
-              14
+              5,
+              17
+            ],
+            [
+              8,
+              21
             ]
           ]
         },
@@ -2103,7 +2211,7 @@
           ]
         },
         "text-halo-color": "rgba(18, 24, 38, 0.92)",
-        "text-halo-width": 1.5,
+        "text-halo-width": 1.6,
         "text-opacity": 1
       }
     },
@@ -2115,7 +2223,7 @@
       },
       "source": "openmaptiles",
       "source-layer": "place",
-      "maxzoom": 6,
+      "maxzoom": 4,
       "filter": [
         "all",
         [
@@ -2133,22 +2241,23 @@
         "text-anchor": "center",
         "text-field": "{name:latin}",
         "text-font": [
-          "Open Sans Semi Bold"
+          "Open Sans Bold"
         ],
+        "text-letter-spacing": 0.12,
         "text-size": {
-          "base": 1.4,
+          "base": 1.2,
           "stops": [
             [
               0,
-              10
-            ],
-            [
-              3,
               12
             ],
             [
-              4,
-              14
+              2,
+              15
+            ],
+            [
+              3,
+              17
             ]
           ]
         },
@@ -2158,7 +2267,7 @@
       "paint": {
         "text-color": "#ED9F54",
         "text-halo-color": "rgba(18, 24, 38, 0.9)",
-        "text-halo-width": 1.5,
+        "text-halo-width": 1.6,
         "text-opacity": {
           "base": 1,
           "stops": [
