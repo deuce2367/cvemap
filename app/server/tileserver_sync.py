@@ -694,6 +694,248 @@ def _adapt_protomaps_style_to_openmaptiles(
     return adapted
 
 
+_OMT_LAND_TO_PMAP: dict[str, tuple[str, ...]] = {
+    "ice": ("glacier",),
+    "glacier": ("glacier",),
+    "ice_shelf": ("glacier",),
+    "wood": ("forest", "wood"),
+    "forest": ("forest", "wood"),
+    "grass": ("grass", "grassland"),
+    "grassland": ("grass", "grassland"),
+    "meadow": ("meadow", "grassland", "village_green"),
+    "reedbed": ("wetland", "marsh"),
+    "saltmarsh": ("wetland", "marsh"),
+    "village_green": ("village_green", "grass"),
+    "golf_course": ("golf_course",),
+    "scrub": ("scrub",),
+    "heath": ("scrub",),
+    "wetland": ("wetland", "marsh"),
+    "marsh": ("marsh", "wetland"),
+    "swamp": ("wetland",),
+    "bog": ("wetland",),
+    "mangrove": ("wetland",),
+    "sand": ("sand", "beach"),
+    "beach": ("beach", "sand"),
+    "dune": ("sand",),
+    "farmland": ("farmland",),
+    "farm": ("farmland",),
+    "agriculture": ("farmland",),
+    "orchard": ("orchard",),
+    "vineyard": ("vineyard",),
+    "plant_nursery": ("orchard", "allotments"),
+    "allotments": ("allotments",),
+    "park": ("park", "nature_reserve"),
+    "national_park": ("national_park", "nature_reserve", "protected_area"),
+    "garden": ("garden",),
+    "recreation_ground": ("recreation_ground", "park"),
+    "residential": ("residential", "urban_area"),
+    "suburb": ("residential", "urban_area"),
+    "suburbs": ("residential", "urban_area"),
+    "neighbourhood": ("residential", "urban_area"),
+    "cemetery": ("cemetery",),
+    "military": ("military", "naval_base"),
+    "railway": ("railway",),
+    "industrial": ("industrial",),
+    "commercial": ("commercial",),
+    "retail": ("retail",),
+    "school": ("school",),
+    "university": ("university",),
+    "college": ("college",),
+    "kindergarten": ("kindergarten", "school"),
+    "hospital": ("hospital",),
+    "stadium": ("stadium",),
+    "playground": ("playground",),
+    "pitch": ("pitch",),
+    "track": ("track", "pitch"),
+    "zoo": ("zoo",),
+    "theme_park": ("theme_park", "zoo"),
+    "dam": ("dam",),
+    "quarry": ("quarry",),
+}
+
+_NATURAL_PMAP_KINDS = frozenset(
+    {"forest", "wood", "grass", "grassland", "meadow", "scrub", "wetland", "marsh", "sand", "beach", "glacier"}
+)
+
+_UNSUPPORTED_OMT_ROAD_CLASSES = frozenset({"raceway", "aerialway", "busway", "bridleway"})
+
+
+def _replace_json_expr(node: object, target: object, replacement: object) -> object:
+    """Recursively replace exact JSON sub-expressions (e.g. ['get', 'rank']) inside layout/paint structures."""
+    if node == target:
+        return copy.deepcopy(replacement)
+    if isinstance(node, list):
+        return [_replace_json_expr(item, target, replacement) for item in node]
+    if isinstance(node, dict):
+        return {k: _replace_json_expr(v, target, replacement) for k, v in node.items()}
+    return node
+
+
+def _enforce_minzoom(lyr: dict, floor: float) -> None:
+    cur = lyr.get("minzoom")
+    if cur is None or cur < floor:
+        lyr["minzoom"] = floor
+
+
+def _parse_omt_filter(flt: object) -> dict:
+    """Extract semantic OpenMapTiles filter constraints from legacy or compound MapLibre filter arrays."""
+    info: dict = {
+        "classes": set(),
+        "neg_classes": set(),
+        "subclasses": set(),
+        "neg_subclasses": set(),
+        "brunnel": None,  # 'tunnel' | 'bridge' | 'both' | 'surface' | None
+        "ramp": None,  # True | False | None
+        "intermittent": None,  # True | False | None
+        "disputed": None,  # True | False | None
+        "maritime": None,  # True | False | None
+        "admin_levels": set(),
+        "admin_max": None,
+        "admin_min": None,
+        "pos_service": False,
+        "neg_service": False,
+        "pos_capital": False,
+        "neg_capital": False,
+        "oneway_rev": False,
+        "rank_max": None,
+        "rank_min": None,
+        "no_iso_a2": False,
+        "geom_type": None,
+    }
+
+    def _walk(node: object, in_any: bool = False, negated: bool = False) -> None:
+        if not isinstance(node, list) or not node:
+            return
+        op = node[0]
+        if not isinstance(op, str):
+            return
+        if op == "all":
+            for child in node[1:]:
+                _walk(child, in_any=in_any, negated=negated)
+            return
+        if op == "any":
+            for child in node[1:]:
+                _walk(child, in_any=True, negated=negated)
+            return
+        if op in ("none", "!"):
+            for child in node[1:]:
+                _walk(child, in_any=in_any, negated=not negated)
+            return
+
+        if len(node) < 2:
+            return
+        raw_prop = node[1]
+        if isinstance(raw_prop, list) and len(raw_prop) == 2 and raw_prop[0] == "get" and isinstance(raw_prop[1], str):
+            prop = raw_prop[1]
+        elif isinstance(raw_prop, str):
+            prop = raw_prop
+        else:
+            return
+        vals = node[2:]
+        if len(vals) == 1 and isinstance(vals[0], list) and len(vals[0]) == 2 and vals[0][0] == "literal" and isinstance(vals[0][1], list):
+            vals = vals[0][1]
+
+        is_pos = (op in ("==", "in") and not negated) or (op in ("!=", "!in") and negated)
+        is_neg = (op in ("!=", "!in") and not negated) or (op in ("==", "in") and negated)
+
+        if prop == "$type" and is_pos and vals:
+            info["geom_type"] = str(vals[0])
+        elif prop == "class":
+            if is_pos:
+                info["classes"].update(str(v) for v in vals)
+            elif is_neg and not in_any:
+                info["neg_classes"].update(str(v) for v in vals)
+        elif prop == "subclass":
+            if is_pos:
+                info["subclasses"].update(str(v) for v in vals)
+            elif is_neg and not in_any:
+                info["neg_subclasses"].update(str(v) for v in vals)
+        elif prop in ("brunnel", "brunel"):
+            vals_s = {str(v) for v in vals}
+            if is_pos:
+                if "tunnel" in vals_s and "bridge" in vals_s:
+                    info["brunnel"] = "both"
+                elif "tunnel" in vals_s:
+                    info["brunnel"] = "tunnel"
+                elif "bridge" in vals_s:
+                    info["brunnel"] = "bridge"
+            elif (is_neg or (op == "!has" and not negated)) and not in_any:
+                if info["brunnel"] is None:
+                    info["brunnel"] = "surface"
+        elif prop == "ramp":
+            truthy = any(str(v) in ("1", "True", "true", "yes") for v in vals)
+            falsy = any(str(v) in ("0", "False", "false", "no") for v in vals)
+            if (is_pos and truthy) or (op == "has" and not negated):
+                info["ramp"] = True
+            elif not in_any and ((is_neg and truthy) or (is_pos and falsy) or (op == "!has" and not negated)):
+                info["ramp"] = False
+        elif prop == "intermittent":
+            if any(str(v) == "1" for v in vals):
+                if is_pos:
+                    info["intermittent"] = True
+                elif is_neg and not in_any:
+                    info["intermittent"] = False
+        elif prop == "disputed":
+            if any(str(v) == "1" for v in vals):
+                if is_pos:
+                    info["disputed"] = True
+                elif is_neg and not in_any:
+                    info["disputed"] = False
+            elif any(str(v) == "0" for v in vals) and is_pos and not in_any:
+                info["disputed"] = False
+        elif prop == "maritime":
+            if any(str(v) == "1" for v in vals):
+                if is_pos:
+                    info["maritime"] = True
+                elif is_neg and not in_any:
+                    info["maritime"] = False
+            elif any(str(v) == "0" for v in vals) and is_pos and not in_any:
+                info["maritime"] = False
+        elif prop == "admin_level" and not negated:
+            if op in ("==", "in"):
+                for v in vals:
+                    if isinstance(v, (int, float)):
+                        info["admin_levels"].add(int(v))
+            elif op == "<=" and vals and isinstance(vals[0], (int, float)):
+                info["admin_max"] = int(vals[0])
+            elif op in (">", ">=") and vals and isinstance(vals[0], (int, float)):
+                info["admin_min"] = int(vals[0]) + (1 if op == ">" else 0)
+        elif prop == "service" and not in_any:
+            if (op == "has" and not negated) or is_pos:
+                info["pos_service"] = True
+            elif (op == "!has" and not negated) or is_neg:
+                info["neg_service"] = True
+        elif prop == "capital" and not in_any:
+            if (op == "has" and not negated) or is_pos:
+                info["pos_capital"] = True
+            elif (op == "!has" and not negated) or is_neg:
+                info["neg_capital"] = True
+        elif prop == "oneway" and is_pos and vals == [-1]:
+            info["oneway_rev"] = True
+        elif prop == "rank" and not negated and vals and isinstance(vals[0], (int, float)):
+            v_num = int(vals[0])
+            if op == "<=":
+                info["rank_max"] = v_num
+            elif op == "<":
+                info["rank_max"] = v_num - 1
+            elif op == ">=":
+                info["rank_min"] = v_num
+            elif op == ">":
+                info["rank_min"] = v_num + 1
+        elif prop == "iso_a2" and op == "!has" and not negated:
+            info["no_iso_a2"] = True
+
+    _walk(flt)
+    return info
+
+
+def _in_legacy(prop: str, values: list[str] | tuple[str, ...]) -> list:
+    uniq = list(dict.fromkeys(values))
+    if len(uniq) == 1:
+        return ["==", prop, uniq[0]]
+    return ["in", prop, *uniq]
+
+
 def _adapt_openmaptiles_style_to_protomaps(
     style_obj: dict,
     pmap_prefix: bool,
@@ -712,16 +954,24 @@ def _adapt_openmaptiles_style_to_protomaps(
 
     k_kind = "pmap:kind" if pmap_prefix else "kind"
     k_detail = "pmap:kind_detail" if pmap_prefix else "kind_detail"
-    k_admin = "pmap:min_admin_level" if pmap_prefix else "kind_detail"
     k_pop = "pmap:population_rank" if pmap_prefix else "population_rank"
     k_minz = "pmap:min_zoom" if pmap_prefix else "min_zoom"
     name_expr = ["coalesce", ["get", "name:en"], ["get", "name"]]
+    place_rank_expr = ["-", 16, ["coalesce", ["get", k_pop], 8]]
+    poi_rank_expr = ["coalesce", ["get", k_minz], 14]
 
     land_color: object = "#f2f3f0"
     water_color: object = "#a0c8f0"
-    has_city_large = any("city_large" in (l.get("id") or "").lower() for l in adapted.get("layers", []))
+    orig_layers = adapted.get("layers", [])
+    has_city_large = any("city_large" in (l.get("id") or "").lower() for l in orig_layers)
+    has_lowzoom_point_water_label = any(
+        l.get("source-layer") == "water_name"
+        and "lakeline" not in (l.get("id") or "").lower()
+        and (l.get("minzoom") or 0) <= 6
+        for l in orig_layers
+    )
 
-    for lyr in adapted.get("layers", []):
+    for lyr in orig_layers:
         if lyr.get("type") == "background":
             bgc = (lyr.get("paint") or {}).get("background-color")
             if bgc is not None:
@@ -733,9 +983,9 @@ def _adapt_openmaptiles_style_to_protomaps(
 
     new_layers: list[dict] = []
     inserted_earth = False
-    seen_poi_layer = False
+    seen_generic_poi = False
 
-    for lyr in adapted.get("layers", []):
+    for lyr in orig_layers:
         lid_raw = lyr.get("id", "")
         lid = lid_raw.lower()
         ltype = lyr.get("type", "")
@@ -760,151 +1010,427 @@ def _adapt_openmaptiles_style_to_protomaps(
             inserted_earth = True
             continue
 
+        finfo = _parse_omt_filter(lyr.get("filter"))
+        classes: set[str] = finfo["classes"]
+        neg_classes: set[str] = finfo["neg_classes"]
+        subclasses: set[str] = finfo["subclasses"]
+
         if sl == "water":
             lyr["source-layer"] = "water"
-            if "intermittent" in lid:
+            if finfo["intermittent"] is True or "intermittent" in lid:
                 lyr["filter"] = ["all", ["==", "$type", "Polygon"], ["has", "intermittent"]]
             else:
                 lyr["filter"] = ["==", "$type", "Polygon"]
+
         elif sl == "waterway":
-            lyr["source-layer"] = "water"
+            if finfo["intermittent"] is True or finfo["brunnel"] in ("tunnel", "bridge"):
+                continue
+            lyr["source-layer"] = "physical_line" if pmap_prefix else "water"
             if ltype == "symbol":
-                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "stream", "river", "canal"]]
+                _enforce_minzoom(lyr, 10)
+                lyr["filter"] = ["all", ["==", "$type", "LineString"], ["has", "name"], ["in", k_kind, "river", "canal", "stream"]]
                 lyr.setdefault("layout", {})["text-field"] = name_expr
-            elif "river" in lid or "canal" in lid:
-                lyr["filter"] = ["in", k_kind, "river", "canal"]
+            elif "river" in classes and "canal" not in classes and "stream" not in classes:
+                _enforce_minzoom(lyr, 6)
+                lyr["filter"] = ["all", ["==", "$type", "LineString"], ["in", k_kind, "river", "canal"]]
+            elif "river" in neg_classes or "stream" in classes or "ditch" in classes or "drain" in classes:
+                _enforce_minzoom(lyr, 11)
+                lyr["filter"] = ["all", ["==", "$type", "LineString"], ["in", k_kind, "stream", "canal", "ditch", "drain"]]
             else:
-                lyr["filter"] = ["in", k_kind, "stream", "river", "canal", "ditch", "drain"]
+                _enforce_minzoom(lyr, 8)
+                lyr["filter"] = ["all", ["==", "$type", "LineString"], ["in", k_kind, "river", "canal", "stream"]]
+
         elif sl == "water_name":
-            lyr["source-layer"] = "water"
-            if "ocean" in lid:
-                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "ocean", "sea", "bay", "strait"]]
-            elif "lake" in lid:
-                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "lake", "water"]]
+            is_lakeline = "lakeline" in lid
+            if is_lakeline and has_lowzoom_point_water_label:
+                continue
+            lyr["source-layer"] = "physical_point" if pmap_prefix else "water"
+            layout = lyr.setdefault("layout", {})
+            layout["text-field"] = name_expr
+            if layout.get("symbol-placement") == "line":
+                del layout["symbol-placement"]
+            if "ocean" in classes or "ocean" in lid:
+                lyr["filter"] = ["all", ["==", "$type", "Point"], ["has", "name"], ["in", k_kind, "ocean", "sea", "bay", "strait"]]
+            elif "ocean" in neg_classes or "lake" in classes or "lake" in lid:
+                lyr["filter"] = ["all", ["==", "$type", "Point"], ["has", "name"], ["in", k_kind, "lake", "water", "bay"]]
             else:
-                lyr["filter"] = ["has", "name"]
-            lyr.setdefault("layout", {})["text-field"] = name_expr
+                lyr["filter"] = [
+                    "all",
+                    ["==", ["geometry-type"], "Point"],
+                    ["has", "name"],
+                    [">=", ["zoom"], ["coalesce", ["get", k_minz], 3]],
+                ]
+
         elif sl == "park":
-            lyr["source-layer"] = "landuse"
-            lyr["filter"] = ["in", k_kind, "national_park", "park", "nature_reserve", "protected_area", "golf_course"]
-        elif sl == "landcover":
-            if "ice" in lid or "glacier" in lid:
-                lyr["source-layer"] = "landcover"
+            if ltype == "symbol":
+                lyr["source-layer"] = "pois"
+                _enforce_minzoom(lyr, 8)
+                lyr["layout"] = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], poi_rank_expr)
+                lyr["layout"]["text-field"] = name_expr
+                lyr["filter"] = [
+                    "all",
+                    ["has", "name"],
+                    ["in", ["get", k_kind], ["literal", ["national_park", "nature_reserve", "protected_area"]]],
+                ]
+            elif ltype == "line":
+                lyr["source-layer"] = "landuse"
+                _enforce_minzoom(lyr, 8)
+                lyr["filter"] = ["in", k_kind, "national_park", "nature_reserve", "protected_area"]
+            else:
+                lyr["source-layer"] = "landuse"
+                lyr["filter"] = ["in", k_kind, "national_park", "park", "nature_reserve", "protected_area", "golf_course"]
+
+        elif sl in ("landcover", "landuse"):
+            paint = lyr.get("paint") or {}
+            if "subclass" in json.dumps(paint):
+                paint = _replace_json_expr(paint, ["get", "subclass"], ["get", k_kind])
+                lyr["paint"] = paint
+            if "class" in json.dumps(paint):
+                paint = _replace_json_expr(paint, ["get", "class"], ["get", k_kind])
+                lyr["paint"] = paint
+
+            fp = paint.get("fill-pattern")
+            if isinstance(fp, list) and fp and fp[0] == "match":
+                # Restrict pattern match layers strictly to Protomaps kinds that resolve to a real sprite
+                pattern_keys: list[str] = []
+                idx = 2
+                while idx + 1 < len(fp) - 1:
+                    kspec = fp[idx]
+                    sprite_val = fp[idx + 1]
+                    if sprite_val:
+                        if isinstance(kspec, list):
+                            pattern_keys.extend(str(x) for x in kspec)
+                        elif isinstance(kspec, str):
+                            pattern_keys.append(kspec)
+                    idx += 2
+                valid_pkeys = [
+                    pk for pk in pattern_keys
+                    if pk in {
+                        "allotments", "beach", "scrub", "forest", "marsh", "orchard",
+                        "vineyard", "wetland", "wood", "military", "cemetery", "quarry",
+                    }
+                ]
+                if not valid_pkeys:
+                    continue
+                _enforce_minzoom(lyr, 11)
+                lyr["source-layer"] = "landuse"
+                lyr["filter"] = _in_legacy(k_kind, valid_pkeys)
+                if pmap_prefix and (set(valid_pkeys) & _NATURAL_PMAP_KINDS):
+                    nat_clone = copy.deepcopy(lyr)
+                    nat_clone["id"] = f"{lid_raw}__natural"
+                    nat_clone["source-layer"] = "natural"
+                    new_layers.append(nat_clone)
+                new_layers.append(lyr)
+                continue
+
+            # OpenMapTiles 'landuse' only defines 'class' (never 'subclass'), whereas 'landcover' defines both
+            tags = classes if sl == "landuse" else (classes | subclasses)
+            if not tags:
+                # Never fall back to unfiltered Polygon on landcover/landuse
+                continue
+
+            mapped_kinds: list[str] = []
+            for t in sorted(tags):
+                for mk in _OMT_LAND_TO_PMAP.get(t, ()):
+                    if mk not in mapped_kinds:
+                        mapped_kinds.append(mk)
+
+            if not mapped_kinds:
+                continue
+
+            if ltype == "line" and sl == "landuse" and len(mapped_kinds) > 3:
+                # Avoid drawing dark outlines around broad city-wide residential neighborhood polygons
+                mapped_kinds = [mk for mk in mapped_kinds if mk not in ("residential", "urban_area")]
+                if not mapped_kinds:
+                    continue
+                _enforce_minzoom(lyr, 14)
+
+            if mapped_kinds == ["glacier"]:
+                if ltype == "fill" and (lyr.get("minzoom") or 0) <= 7:
+                    lc_clone = copy.deepcopy(lyr)
+                    lc_clone["id"] = f"{lid_raw}__lowz"
+                    lc_clone["source-layer"] = "landcover"
+                    lc_clone["maxzoom"] = 8
+                    lc_clone["filter"] = ["==", k_kind, "glacier"]
+                    new_layers.append(lc_clone)
+                lyr["source-layer"] = "natural" if pmap_prefix else "landuse"
                 lyr["filter"] = ["==", k_kind, "glacier"]
-            elif "wood" in lid:
-                lyr["source-layer"] = "landuse"
-                lyr["filter"] = ["in", k_kind, "forest", "wood"]
-            elif "grass" in lid:
-                lyr["source-layer"] = "landuse"
-                lyr["filter"] = ["in", k_kind, "grass", "grassland", "meadow", "scrub"]
-            elif "wetland" in lid:
-                lyr["source-layer"] = "landuse"
-                lyr["filter"] = ["in", k_kind, "wetland", "marsh"]
-            elif "sand" in lid:
-                lyr["source-layer"] = "landuse"
-                lyr["filter"] = ["in", k_kind, "sand", "beach"]
             else:
-                lyr["source-layer"] = "landcover"
-                lyr["filter"] = ["==", "$type", "Polygon"]
-        elif sl == "landuse":
-            lyr["source-layer"] = "landuse"
-            if "residential" in lid or "suburb" in lid:
-                lyr["filter"] = ["in", k_kind, "residential", "urban_area"]
-            elif "cemetery" in lid:
-                lyr["filter"] = ["==", k_kind, "cemetery"]
-            elif "hospital" in lid:
-                lyr["filter"] = ["==", k_kind, "hospital"]
-            elif "school" in lid:
-                lyr["filter"] = ["in", k_kind, "school", "university", "college"]
-            elif "pitch" in lid or "track" in lid or "stadium" in lid:
-                lyr["filter"] = ["in", k_kind, "pitch", "playground", "stadium", "recreation_ground"]
-            elif "commercial" in lid:
-                lyr["filter"] = ["in", k_kind, "commercial", "retail"]
-            elif "industrial" in lid:
-                lyr["filter"] = ["==", k_kind, "industrial"]
-            elif "military" in lid:
-                lyr["filter"] = ["in", k_kind, "military", "naval_base"]
-            else:
-                lyr["filter"] = ["==", "$type", "Polygon"]
+                lyr["source-layer"] = "landuse"
+                lyr["filter"] = _in_legacy(k_kind, mapped_kinds)
+                if pmap_prefix and (set(mapped_kinds) & _NATURAL_PMAP_KINDS):
+                    nat_clone = copy.deepcopy(lyr)
+                    nat_clone["id"] = f"{lid_raw}__natural"
+                    nat_clone["source-layer"] = "natural"
+                    nat_kinds = [mk for mk in mapped_kinds if mk in _NATURAL_PMAP_KINDS]
+                    nat_clone["filter"] = _in_legacy(k_kind, nat_kinds)
+                    new_layers.append(nat_clone)
+
         elif sl == "building":
             lyr["source-layer"] = "buildings"
+            _enforce_minzoom(lyr, 13)
             lyr["filter"] = ["==", "$type", "Polygon"]
             paint = lyr.get("paint") or {}
             if "fill-extrusion-height" in paint:
                 paint["fill-extrusion-height"] = ["coalesce", ["get", "height"], 8]
             if "fill-extrusion-base" in paint:
                 paint["fill-extrusion-base"] = 0
+
         elif sl == "aeroway":
-            if ltype == "fill":
+            if ltype == "symbol":
+                if "gate" in classes or "gate" in lid:
+                    continue
+                lyr["source-layer"] = "transit" if pmap_prefix else "roads"
+                _enforce_minzoom(lyr, 14)
+                layout = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], poi_rank_expr)
+                layout["text-field"] = name_expr
+                lyr["layout"] = layout
+                lyr["filter"] = ["all", ["has", "name"], ["in", k_detail, "runway", "taxiway"]]
+            elif ltype == "fill":
                 lyr["source-layer"] = "landuse"
-                lyr["filter"] = ["in", k_kind, "aerodrome", "runway", "taxiway"]
+                if classes == {"runway", "taxiway"}:
+                    _enforce_minzoom(lyr, 11)
+                    lyr["filter"] = ["in", k_kind, "runway", "taxiway"]
+                else:
+                    _enforce_minzoom(lyr, 11)
+                    lyr["filter"] = ["in", k_kind, "aerodrome", "airfield", "runway", "taxiway"]
             else:
-                lyr["source-layer"] = "roads"
-                lyr["filter"] = ["==", k_detail, "taxiway"] if "taxiway" in lid else ["==", k_detail, "runway"]
+                lyr["source-layer"] = "transit" if pmap_prefix else "roads"
+                _enforce_minzoom(lyr, 11)
+                lyr["filter"] = ["==", k_detail, "taxiway"] if ("taxiway" in classes or "taxiway" in lid) else ["==", k_detail, "runway"]
+
         elif sl == "boundary":
+            if finfo["maritime"] is True:
+                continue
             lyr["source-layer"] = "boundaries"
-            if "country" in lid or "_2" in lid:
-                lyr["filter"] = ["<=", k_admin, 2]
+            b_conds: list = ["all"]
+            is_country = (
+                2 in finfo["admin_levels"]
+                or (finfo["admin_max"] is not None and finfo["admin_max"] <= 2)
+                or (not finfo["admin_levels"] and finfo["admin_min"] is None and ("country" in lid or "_2" in lid or "disputed" in lid))
+            )
+            if is_country:
+                b_conds.append(["==", k_kind, "country"])
+            elif finfo["admin_levels"] and max(finfo["admin_levels"]) <= 4:
+                b_conds.append(["==", k_kind, "region"])
             else:
-                lyr["filter"] = [">", k_admin, 2]
+                b_conds.append(["in", k_kind, "region", "county"])
+
+            if finfo["disputed"] is True:
+                b_conds.append(["has", "disputed"])
+            elif finfo["disputed"] is False:
+                b_conds.append(["!has", "disputed"])
+
+            lyr["filter"] = b_conds[1] if len(b_conds) == 2 else b_conds
+
         elif sl == "transportation":
             if ltype == "fill":
-                lyr["source-layer"] = "landuse"
-                lyr["filter"] = ["in", k_kind, "pier", "pedestrian"]
+                if "pier" in classes or "pier" in lid:
+                    lyr["source-layer"] = "landuse"
+                    _enforce_minzoom(lyr, 12)
+                    lyr["filter"] = ["all", ["==", "$type", "Polygon"], ["==", k_kind, "pier"]]
+                elif "bridge" in classes or "platform" in subclasses:
+                    continue
+                else:
+                    lyr["source-layer"] = "landuse"
+                    _enforce_minzoom(lyr, 13)
+                    lyr["filter"] = ["all", ["==", "$type", "Polygon"], ["==", k_kind, "pedestrian"]]
             elif ltype == "symbol":
+                if finfo["oneway_rev"]:
+                    continue
                 lyr["source-layer"] = "roads"
-                lyr["filter"] = ["==", "oneway", "yes"]
+                _enforce_minzoom(lyr, 15)
+                if "path" in classes:
+                    lyr["filter"] = ["all", ["in", "oneway", "yes", 1, "1", True], ["==", k_kind, "path"]]
+                else:
+                    lyr["filter"] = ["all", ["in", "oneway", "yes", 1, "1", True], ["in", k_kind, "highway", "major_road", "medium_road", "minor_road"]]
             else:
-                lyr["source-layer"] = "roads"
-                conds_t: list = ["all"]
-                if "tunnel" in lid:
-                    conds_t.append(["has", "is_tunnel"])
-                elif "bridge" in lid:
-                    conds_t.append(["has", "is_bridge"])
-                elif not any(w in lid for w in ("rail", "transit", "ferry", "pier")):
-                    conds_t.extend([["!has", "is_tunnel"], ["!has", "is_bridge"]])
+                # Line layers: strip unsupported construction / raceway / aerialway / bridleway classes
+                if subclasses == {"bridleway"}:
+                    continue
+                had_explicit_target = bool(classes or subclasses)
+                eff_classes: list[str] = []
+                eff_ramp = finfo["ramp"]
+                for raw_c in sorted(classes):
+                    if raw_c.endswith("_construction") or raw_c in _UNSUPPORTED_OMT_ROAD_CLASSES:
+                        continue
+                    if raw_c.endswith("_link"):
+                        eff_classes.append(raw_c[:-5])
+                        eff_ramp = True
+                    else:
+                        eff_classes.append(raw_c)
+                eff_subclasses = {sc for sc in subclasses if sc != "bridleway"}
 
-                if "rail" in lid or "transit" in lid:
-                    conds_t.append(["==", k_kind, "rail"])
-                elif "ferry" in lid:
-                    conds_t.append(["==", k_kind, "ferry"])
-                elif "pier" in lid:
-                    conds_t.append(["==", k_detail, "pier"])
-                elif any(w in lid for w in ("path", "pedestrian", "steps", "track")):
-                    conds_t.append(["in", k_kind, "path", "other"])
-                elif "link" in lid:
-                    conds_t.append(["has", "is_link"])
-                elif "motorway" in lid:
-                    conds_t.extend([["==", k_kind, "highway"], ["!has", "is_link"]])
-                elif any(w in lid for w in ("trunk", "primary", "secondary", "tertiary", "major")):
-                    conds_t.extend([["==", k_kind, "major_road"], ["!has", "is_link"]])
-                elif "service" in lid:
-                    conds_t.extend([["==", k_kind, "minor_road"], ["==", k_detail, "service"]])
-                elif "minor" in lid or "street" in lid:
-                    conds_t.append(["==", k_kind, "minor_road"])
+                if had_explicit_target and not eff_classes and not eff_subclasses:
+                    continue
+
+                if not eff_classes and (eff_subclasses & {"subway", "light_rail", "tram"}):
+                    eff_classes = ["transit"]
+                elif not eff_classes and eff_ramp is True:
+                    eff_classes = ["link"]
+
+                if not eff_classes:
+                    continue
+
+                is_transit_sl = pmap_prefix and set(eff_classes) <= {"rail", "transit", "ferry"}
+                lyr["source-layer"] = "transit" if is_transit_sl else "roads"
+
+                class_branches: list[list] = []
+                minz_floors: list[float] = []
+
+                for rc in eff_classes:
+                    if rc == "motorway":
+                        minz_floors.append(8 if eff_ramp is True else (6 if finfo["brunnel"] in ("tunnel", "bridge") else 4))
+                        if eff_ramp is True:
+                            class_branches.append(["==", k_detail, "motorway_link"])
+                        elif eff_ramp is False:
+                            class_branches.append(["==", k_detail, "motorway"])
+                        else:
+                            class_branches.append(["in", k_detail, "motorway", "motorway_link"])
+                    elif rc == "trunk":
+                        minz_floors.append(10 if eff_ramp is True else (7 if finfo["brunnel"] in ("tunnel", "bridge") else 5))
+                        if eff_ramp is True:
+                            class_branches.append(["==", k_detail, "trunk_link"])
+                        elif eff_ramp is False:
+                            class_branches.append(["==", k_detail, "trunk"])
+                        else:
+                            class_branches.append(["in", k_detail, "trunk", "trunk_link"])
+                    elif rc == "primary":
+                        minz_floors.append(10 if eff_ramp is True else (8 if finfo["brunnel"] in ("tunnel", "bridge") else 7))
+                        if eff_ramp is True:
+                            class_branches.append(["==", k_detail, "primary_link"])
+                        elif eff_ramp is False:
+                            class_branches.append(
+                                ["any", ["==", k_detail, "primary"], ["all", ["==", k_kind, "major_road"], ["!has", k_detail]]]
+                            )
+                        else:
+                            class_branches.append(
+                                ["any", ["in", k_detail, "primary", "primary_link"], ["all", ["==", k_kind, "major_road"], ["!has", k_detail]]]
+                            )
+                    elif rc == "secondary":
+                        minz_floors.append(11 if eff_ramp is True else 9)
+                        if eff_ramp is True:
+                            class_branches.append(["==", k_detail, "secondary_link"])
+                        elif eff_ramp is False:
+                            class_branches.append(["==", k_detail, "secondary"])
+                        else:
+                            class_branches.append(["in", k_detail, "secondary", "secondary_link"])
+                    elif rc == "tertiary":
+                        minz_floors.append(11 if eff_ramp is True else 10)
+                        if eff_ramp is True:
+                            class_branches.append(["==", k_detail, "tertiary_link"])
+                        elif eff_ramp is False:
+                            class_branches.append(["==", k_detail, "tertiary"])
+                        else:
+                            class_branches.append(["in", k_detail, "tertiary", "tertiary_link"])
+                    elif rc == "link":
+                        minz_floors.append(10)
+                        class_branches.append(
+                            ["in", k_detail, "motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link"]
+                        )
+                    elif rc in ("minor", "street", "street_limited"):
+                        minz_floors.append(12)
+                        class_branches.append(["in", k_detail, "residential", "unclassified", "living_street", "road"])
+                    elif rc == "service":
+                        minz_floors.append(13)
+                        class_branches.append(["==", k_detail, "service"])
+                    elif rc == "track":
+                        minz_floors.append(13)
+                        class_branches.append(["==", k_detail, "track"])
+                    elif rc in ("path", "pedestrian", "steps", "cycleway", "footway"):
+                        minz_floors.append(13)
+                        if "steps" in eff_subclasses or rc == "steps":
+                            class_branches.append(["==", k_detail, "steps"])
+                        elif "cycleway" in eff_subclasses or rc == "cycleway":
+                            class_branches.append(["==", k_detail, "cycleway"])
+                        elif "pedestrian" in eff_subclasses or rc == "pedestrian":
+                            class_branches.append(["==", k_detail, "pedestrian"])
+                        elif "footway" in eff_subclasses or rc == "footway":
+                            class_branches.append(["in", k_detail, "footway", "path", "sidewalk", "corridor"])
+                        else:
+                            class_branches.append(["all", ["==", k_kind, "path"], ["!=", k_detail, "pier"]])
+                    elif rc == "pier":
+                        minz_floors.append(12)
+                        class_branches.append(["==", k_detail, "pier"])
+                    elif rc == "ferry":
+                        minz_floors.append(6)
+                        class_branches.append(["==", k_kind, "ferry"])
+                    elif rc == "rail":
+                        minz_floors.append(13 if finfo["pos_service"] else 9)
+                        rail_cond: list = ["all", ["==", k_kind, "rail"], ["!in", k_detail, "subway", "light_rail", "tram", "ventilation_shaft", "adjacent"]]
+                        if finfo["pos_service"]:
+                            rail_cond.append(["in", "service", "siding", "spur", "yard"])
+                        elif finfo["neg_service"]:
+                            rail_cond.append(["!in", "service", "siding", "spur", "yard"])
+                        class_branches.append(rail_cond)
+                    elif rc == "transit":
+                        minz_floors.append(12)
+                        t_kinds = sorted(eff_subclasses & {"subway", "light_rail", "tram"}) or ["subway", "light_rail", "tram"]
+                        class_branches.append(_in_legacy(k_detail, t_kinds))
+
+                if not class_branches:
+                    continue
+
+                if minz_floors:
+                    _enforce_minzoom(lyr, min(minz_floors))
+
+                conds_t: list = ["all"]
+                brunnel = finfo["brunnel"]
+                if brunnel == "tunnel":
+                    conds_t.append(["<", "pmap:level", 0] if pmap_prefix else ["has", "is_tunnel"])
+                elif brunnel == "bridge":
+                    conds_t.append([">", "pmap:level", 0] if pmap_prefix else ["has", "is_bridge"])
+                elif brunnel == "both":
+                    if pmap_prefix:
+                        conds_t.append(["in", "pmap:level", -1, 1])
+                    else:
+                        conds_t.append(["any", ["has", "is_tunnel"], ["has", "is_bridge"]])
+                elif brunnel == "surface" and not (set(eff_classes) <= {"ferry", "pier"}):
+                    if pmap_prefix:
+                        conds_t.append(["!in", "pmap:level", -1, 1])
+                    else:
+                        conds_t.extend([["!has", "is_tunnel"], ["!has", "is_bridge"]])
+
+                if len(class_branches) == 1:
+                    cb = class_branches[0]
+                    if cb[0] == "all":
+                        conds_t.extend(cb[1:])
+                    else:
+                        conds_t.append(cb)
                 else:
-                    conds_t.append(["in", k_kind, "minor_road", "major_road", "highway"])
-                lyr["filter"] = conds_t
+                    conds_t.append(["any", *class_branches])
+
+                lyr["filter"] = conds_t[1] if len(conds_t) == 2 else conds_t
+
         elif sl == "transportation_name":
-            lyr["source-layer"] = "roads"
             layout = lyr.setdefault("layout", {})
+            if "rank" in json.dumps(layout):
+                layout = _replace_json_expr(layout, ["get", "rank"], poi_rank_expr)
+                lyr["layout"] = layout
             tf_raw = json.dumps(layout.get("text-field", ""))
-            if "shield" in lid or ("motorway" in lid and "ref" in tf_raw):
-                if "tertiary" in lid:
-                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "tertiary"]]
-                elif "secondary" in lid:
-                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "secondary"]]
-                elif "primary" in lid:
-                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "primary"]]
-                elif "trunk" in lid:
-                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "trunk"]]
-                elif "highway shield" in lid:
-                    road_conds = [["==", ["get", k_kind], "highway"]]
+            if "shield" in lid or "ref" in tf_raw:
+                lyr["source-layer"] = "roads"
+                if classes == {"tertiary"} or "tertiary" in lid:
+                    _enforce_minzoom(lyr, 12)
+                    road_cond = ["==", ["get", k_detail], "tertiary"]
+                elif classes == {"secondary"} or "secondary" in lid:
+                    _enforce_minzoom(lyr, 11)
+                    road_cond = ["==", ["get", k_detail], "secondary"]
+                elif classes == {"primary"} or "primary" in lid:
+                    _enforce_minzoom(lyr, 9)
+                    road_cond = ["==", ["get", k_detail], "primary"]
+                elif classes == {"trunk"} or "trunk" in lid:
+                    _enforce_minzoom(lyr, 8)
+                    road_cond = ["==", ["get", k_detail], "trunk"]
+                elif classes == {"motorway"} or "highway shield" in lid:
+                    _enforce_minzoom(lyr, 7)
+                    road_cond = ["==", ["get", k_detail], "motorway"]
                 else:
-                    road_conds = [["in", ["get", k_kind], ["literal", ["highway", "major_road"]]]]
+                    _enforce_minzoom(lyr, 7)
+                    road_cond = ["in", ["get", k_detail], ["literal", ["motorway", "trunk", "primary"]]]
                 lyr["filter"] = [
                     "all",
-                    *road_conds,
+                    road_cond,
                     ["has", "ref"],
                     [">=", ["length", ["to-string", ["get", "ref"]]], 1],
                     ["<=", ["length", ["to-string", ["get", "ref"]]], 6],
@@ -915,83 +1441,169 @@ def _adapt_openmaptiles_style_to_protomaps(
                     if "ref_length" in img_s:
                         prefix = "default_" if "default_" in img_s else "road_"
                         layout["icon-image"] = ["concat", prefix, ["to-string", ["length", ["to-string", ["get", "ref"]]]]]
-            elif "ferry" in lid:
+            elif classes == {"ferry"} or "ferry" in lid:
+                lyr["source-layer"] = "transit" if pmap_prefix else "roads"
+                _enforce_minzoom(lyr, 12)
                 lyr["filter"] = ["all", ["has", "name"], ["==", k_kind, "ferry"]]
                 layout["text-field"] = name_expr
-            elif "major" in lid:
-                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "highway", "major_road"]]
+            elif classes == {"path"} or "path" in lid:
+                lyr["source-layer"] = "roads"
+                _enforce_minzoom(lyr, 15)
+                lyr["filter"] = ["all", ["has", "name"], ["==", k_kind, "path"]]
                 layout["text-field"] = name_expr
-            elif "path" in lid:
-                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "path", "other"]]
+            elif classes and classes <= {"motorway", "trunk", "primary", "secondary", "tertiary"}:
+                lyr["source-layer"] = "roads"
+                _enforce_minzoom(lyr, 11)
+                details = sorted(classes)
+                lyr["filter"] = ["all", ["has", "name"], _in_legacy(k_detail, details)]
+                layout["text-field"] = name_expr
+            elif classes and ("minor" in classes or "service" in classes):
+                lyr["source-layer"] = "roads"
+                _enforce_minzoom(lyr, 13)
+                details = []
+                for c in sorted(classes):
+                    if c == "minor":
+                        details.extend(["residential", "unclassified", "living_street"])
+                    elif c in ("service", "track", "secondary", "tertiary"):
+                        details.append(c)
+                lyr["filter"] = ["all", ["has", "name"], _in_legacy(k_detail, details or ["residential", "unclassified"])]
                 layout["text-field"] = name_expr
             else:
-                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "minor_road", "major_road"]]
-                layout["text-field"] = name_expr
-        elif sl == "place":
-            lyr["source-layer"] = "places"
-            layout = lyr.setdefault("layout", {})
-            layout["text-field"] = name_expr
-            if "continent" in lid or "country_other" in lid or "country_3" in lid:
-                lyr["filter"] = ["==", ["get", k_kind], "__none__"]
-            elif "country_major" in lid or "country_1" in lid:
-                lyr["filter"] = ["all", ["==", ["get", k_kind], "country"], [">=", ["coalesce", ["get", k_pop], 10], 8]]
-            elif "country_minor" in lid or "country_2" in lid:
-                lyr["filter"] = ["all", ["==", ["get", k_kind], "country"], ["<", ["coalesce", ["get", k_pop], 5], 8]]
-            elif "country" in lid:
-                lyr["filter"] = ["==", ["get", k_kind], "country"]
-            elif "state" in lid:
-                lyr["filter"] = ["==", ["get", k_kind], "region"]
-            elif "capital" in lid:
-                lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["has", "capital"]]
-            elif "city_large" in lid:
-                lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], [">=", ["coalesce", ["get", k_pop], 0], 11]]
-            elif "city" in lid:
-                if has_city_large:
-                    lyr["filter"] = [
-                        "all",
-                        ["==", ["get", k_kind], "locality"],
-                        [">=", ["coalesce", ["get", k_pop], 0], 8],
-                        ["<", ["coalesce", ["get", k_pop], 0], 11],
-                    ]
-                else:
-                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], [">=", ["coalesce", ["get", k_pop], 0], 8]]
-            elif "town" in lid:
-                lyr["filter"] = [
+                lyr["source-layer"] = "roads"
+                _enforce_minzoom(lyr, 11)
+                expr_conds: list = [
                     "all",
-                    ["==", ["get", k_kind], "locality"],
-                    [">=", ["coalesce", ["get", k_pop], 0], 5],
-                    ["<", ["coalesce", ["get", k_pop], 0], 8],
+                    ["has", "name"],
+                    [
+                        "match",
+                        ["get", k_kind],
+                        ["highway", "major_road", "medium_road"],
+                        True,
+                        "minor_road",
+                        [">=", ["zoom"], 13],
+                        "path",
+                        [">=", ["zoom"], 15],
+                        False,
+                    ],
                 ]
-            elif "village" in lid:
-                lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["<", ["coalesce", ["get", k_pop], 0], 5]]
+                if "motorway" in neg_classes:
+                    expr_conds.append(["!=", ["get", k_detail], "motorway"])
+                lyr["filter"] = expr_conds
+                layout["text-field"] = name_expr
+
+        elif sl == "place":
+            if "continent" in classes or finfo["no_iso_a2"] or "continent" in lid or "country_other" in lid or "country_3" in lid:
+                continue
+            lyr["source-layer"] = "places"
+            layout = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], place_rank_expr)
+            layout = _replace_json_expr(layout, " ", "")
+            layout["text-field"] = name_expr
+            lyr["layout"] = layout
+            if "paint" in lyr:
+                lyr["paint"] = _replace_json_expr(lyr["paint"], ["get", "rank"], place_rank_expr)
+
+            cap_expr = ["in", ["to-string", ["coalesce", ["get", "capital"], ""]], ["literal", ["yes", "1", "2"]]]
+
+            if "country" in classes or "country" in lid:
+                if finfo["rank_max"] == 1 or "country_major" in lid or "country_1" in lid:
+                    lyr["filter"] = ["all", ["==", ["get", k_kind], "country"], [">=", ["coalesce", ["get", k_pop], 10], 8]]
+                elif (finfo["rank_min"] is not None and finfo["rank_min"] >= 2) or "country_minor" in lid or "country_2" in lid:
+                    lyr["filter"] = ["all", ["==", ["get", k_kind], "country"], ["<", ["coalesce", ["get", k_pop], 5], 8]]
+                else:
+                    lyr["filter"] = ["==", ["get", k_kind], "country"]
+            elif "state" in classes or "province" in classes or "state" in lid:
+                lyr["filter"] = ["==", ["get", k_kind], "region"]
+            elif "city" in classes or "city" in lid or "capital" in lid:
+                if finfo["pos_capital"] or "capital" in lid:
+                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"], cap_expr]
+                elif finfo["neg_capital"]:
+                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"], ["!", cap_expr]]
+                elif "city_large" in lid or (finfo["rank_max"] is not None and has_city_large):
+                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"], [">=", ["coalesce", ["get", k_pop], 0], 11]]
+                elif has_city_large:
+                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"], ["<", ["coalesce", ["get", k_pop], 9], 11]]
+                else:
+                    lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "city"]]
+            elif "town" in classes or "town" in lid:
+                _enforce_minzoom(lyr, 6)
+                lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "town"]]
+            elif "village" in classes or "village" in lid:
+                _enforce_minzoom(lyr, 10)
+                lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["==", ["get", k_detail], "village"]]
+            elif classes == {"suburb"} or "suburb" in lid:
+                _enforce_minzoom(lyr, 11)
+                lyr["filter"] = ["any", ["==", ["get", k_kind], "macrohood"], ["==", ["get", k_detail], "suburb"]]
             else:
-                lyr["filter"] = ["in", ["get", k_kind], ["literal", ["neighbourhood", "macrohood", "suburb"]]]
+                _enforce_minzoom(lyr, 12)
+                lyr["filter"] = [
+                    "any",
+                    ["==", ["get", k_kind], "neighbourhood"],
+                    ["in", ["get", k_detail], ["literal", ["hamlet", "neighbourhood", "quarter", "isolated_dwelling"]]],
+                ]
+
         elif sl == "aerodrome_label":
             lyr["source-layer"] = "pois"
+            _enforce_minzoom(lyr, 10)
             lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "aerodrome", "airport"]]
-            layout = lyr.setdefault("layout", {})
+            layout = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], poi_rank_expr)
             layout["text-field"] = name_expr
             if "icon-image" in layout and "{" in str(layout["icon-image"]):
                 del layout["icon-image"]
+            lyr["layout"] = layout
+
         elif sl == "mountain_peak":
             if "volcano" in lid:
                 continue
-            lyr["source-layer"] = "pois"
+            lyr["source-layer"] = "physical_point" if pmap_prefix else "pois"
+            _enforce_minzoom(lyr, 11)
             lyr["filter"] = ["all", ["has", "name"], ["==", k_kind, "peak"]]
-            layout = lyr.setdefault("layout", {})
+            layout = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], poi_rank_expr)
             layout["text-field"] = name_expr
             if "icon-image" in layout and "{" in str(layout["icon-image"]):
                 del layout["icon-image"]
+            lyr["layout"] = layout
+
         elif sl == "poi":
-            if seen_poi_layer:
-                continue
-            seen_poi_layer = True
-            lyr["source-layer"] = "pois"
-            lyr["filter"] = ["all", ["has", "name"], [">=", ["zoom"], ["coalesce", ["get", k_minz], 14]]]
-            layout = lyr.setdefault("layout", {})
-            layout["text-field"] = name_expr
-            if "icon-image" in layout:
-                del layout["icon-image"]
+            if classes == {"park"}:
+                lyr["source-layer"] = "pois"
+                _enforce_minzoom(lyr, 13)
+                layout = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], poi_rank_expr)
+                layout["text-field"] = name_expr
+                if "icon-image" in layout:
+                    del layout["icon-image"]
+                lyr["layout"] = layout
+                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "park", "garden"]]
+            elif classes == {"railway"} and (lyr.get("layout") or {}).get("icon-image") == "square_train":
+                lyr["source-layer"] = "pois"
+                _enforce_minzoom(lyr, 13)
+                layout = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], poi_rank_expr)
+                layout["text-field"] = name_expr
+                lyr["layout"] = layout
+                lyr["filter"] = ["all", ["has", "name"], ["==", k_kind, "station"]]
+            else:
+                # Prefer a clean text-only or general POI layer without subclass-gated opacity
+                if seen_generic_poi:
+                    continue
+                seen_generic_poi = True
+                lyr["source-layer"] = "pois"
+                _enforce_minzoom(lyr, 14)
+                layout = _replace_json_expr(lyr.get("layout") or {}, ["get", "rank"], poi_rank_expr)
+                layout["text-field"] = name_expr
+                if "icon-image" in layout:
+                    del layout["icon-image"]
+                lyr["layout"] = layout
+                paint = lyr.get("paint") or {}
+                if isinstance(paint.get("text-opacity"), list):
+                    paint["text-opacity"] = 1
+                if "icon-opacity" in paint:
+                    del paint["icon-opacity"]
+                lyr["paint"] = paint
+                lyr["filter"] = [
+                    "all",
+                    ["has", "name"],
+                    ["!", ["in", ["get", k_kind], ["literal", ["park", "garden", "national_park", "nature_reserve", "protected_area", "station", "aerodrome", "airport", "peak"]]]],
+                    [">=", ["zoom"], ["coalesce", ["get", k_minz], 14]],
+                ]
 
         new_layers.append(lyr)
 
