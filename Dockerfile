@@ -5,6 +5,25 @@
 #   --target full : Self-contained offline image (bundles map data into /app/data)
 # ==============================================================================
 
+# ==============================================================================
+# Stage 1: Isolated Python dependency builder (keeps pip/venv wheels out of runtime)
+# ==============================================================================
+FROM maptiler/tileserver-gl:latest AS venv-builder
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+
+COPY app/requirements.txt /tmp/requirements.txt
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 python3-venv && \
+    python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt && \
+    /opt/venv/bin/pip uninstall -y pip setuptools wheel || true && \
+    find /opt/venv -type d -name "__pycache__" -exec rm -rf {} +
+
+# ==============================================================================
+# Stage 2: Hardened lightweight runtime image
+# ==============================================================================
 FROM maptiler/tileserver-gl:latest AS lite
 
 USER root
@@ -14,21 +33,50 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}"
 
-# Install minimal Python runtime & process utilities (TileServer-GL + Xvfb are in base image)
+# Apply Ubuntu security updates, install minimal Python runtime, and purge unused C -dev headers
 RUN apt-get update && \
+    apt-get dist-upgrade -y --no-install-recommends && \
     apt-get install -y --no-install-recommends \
       python3 \
-      python3-venv \
       curl \
       procps && \
+    dpkg-query -W -f='${Package}\n' | \
+      grep -Ev -- '(-dev$|^libc-dev-bin$|^linux-libc-dev$|^libglib2\.0-dev-bin$|^python3-pip-whl$|^python3-venv$)' | \
+      xargs -r apt-mark manual >/dev/null && \
+    dpkg-query -W -f='${Package}\n' | \
+      grep -E -- '(-dev$|^libc-dev-bin$|^linux-libc-dev$|^libglib2\.0-dev-bin$|^python3-pip-whl$|^python3-venv$)' | \
+      xargs -r apt-get purge -y --auto-remove && \
     mkdir -p -m 1777 /tmp/.X11-unix && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-# Set up isolated Python virtual environment for FastAPI + Pillow OGC WMS gateway
-COPY app/requirements.txt /tmp/requirements.txt
-RUN python3 -m venv /opt/venv && \
-    /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt && \
-    rm -f /tmp/requirements.txt
+# Patch TileServer-GL transitive Node deps, prune build-only node-gyp/tar, and strip npm CLI from runtime
+RUN cd /usr/src/app && \
+    npm install --no-save --no-audit --no-fund --ignore-scripts \
+      "body-parser@^2.4.0" \
+      "qs@^6.16.1" \
+      "minimatch@^11.0.1" && \
+    rm -rf \
+      /usr/src/app/node_modules/@maplibre/maplibre-gl-native/node_modules/minimatch \
+      /usr/src/app/node_modules/node-gyp \
+      /usr/src/app/node_modules/tar \
+      /usr/src/app/node_modules/@tootallnate/once \
+      /usr/src/app/node_modules/cacache \
+      /usr/src/app/node_modules/make-fetch-happen \
+      /usr/src/app/node_modules/http-proxy-agent \
+      /usr/lib/node_modules/npm \
+      /usr/lib/node_modules/corepack \
+      /usr/local/lib/node_modules/npm \
+      /usr/local/lib/node_modules/corepack \
+      /usr/bin/npm \
+      /usr/bin/npx \
+      /usr/bin/corepack \
+      /usr/local/bin/npm \
+      /usr/local/bin/npx \
+      /usr/local/bin/corepack \
+      /root/.npm
+
+# Copy hardened Python virtual environment (no pip/wheel attack surface)
+COPY --from=venv-builder /opt/venv /opt/venv
 
 # Set up application & TileServer template assets under /app
 WORKDIR /app
