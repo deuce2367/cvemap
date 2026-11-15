@@ -15,9 +15,11 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 from server.tileserver_sync import (
+    ALL_STYLES,
     OPENMAPTILES_STYLE_DEFS,
     OPENMAPTILES_STYLES,
     TILESERVER_STYLES,
+    build_browser_style_json,
     discover_vector_datasets,
     format_style_title,
     inspect_pmtiles,
@@ -32,6 +34,11 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="CVEMAP")
 
 DATA_DIR = os.path.abspath("data")
+TILESERVER_TEMPLATE_DIR = (
+    "/app/tileserver"
+    if os.path.isdir("/app/tileserver")
+    else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "tileserver"))
+)
 TILESERVER_INTERNAL_URL = os.environ.get("TILESERVER_INTERNAL_URL", "http://127.0.0.1:8080").rstrip("/")
 
 ORIGIN_SHIFT = 20037508.342789244
@@ -104,6 +111,7 @@ def api_get_maps() -> JSONResponse:
     if primary_dataset is None and datasets:
         primary_dataset = datasets[0]
 
+    sorted_all = sorted(ALL_STYLES, key=lambda s: format_style_title(s))
     return JSONResponse(
         content={
             "datasets": datasets,
@@ -113,7 +121,29 @@ def api_get_maps() -> JSONResponse:
                 {"id": st_id, "title": meta["title"]}
                 for st_id, meta in OPENMAPTILES_STYLE_DEFS.items()
             ],
+            "all_styles": [
+                {"id": st_id, "title": format_style_title(st_id)}
+                for st_id in sorted_all
+            ],
         }
+    )
+
+
+@app.get("/api/style/{dataset}/{style}.json")
+def api_get_browser_style(dataset: str, style: str, request: Request) -> JSONResponse:
+    base_origin = str(request.base_url).rstrip("/")
+    style_obj = build_browser_style_json(
+        data_dir=DATA_DIR,
+        tileserver_template_dir=TILESERVER_TEMPLATE_DIR,
+        dataset_name=dataset,
+        style_id=style,
+        base_origin=base_origin,
+    )
+    if style_obj is None:
+        raise HTTPException(status_code=404, detail="No vector dataset or style available")
+    return JSONResponse(
+        content=style_obj,
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )
 
 
@@ -122,25 +152,17 @@ def _resolve_tileserver_style(style: str, dataset: str | None = None) -> str:
     if not dataset and "__" in style:
         dataset, style = style.split("__", 1)
 
+    st = style if style in ALL_STYLES else "light"
+
     if dataset:
         ds = next(
             (d for d in datasets if d["name"] == dataset or d.get("ts_key") == dataset),
             None,
         )
         if ds:
-            if ds.get("is_mbtiles"):
-                st = style if style in OPENMAPTILES_STYLES else "osm_liberty"
-            else:
-                st = style if style in TILESERVER_STYLES else "light"
             return f"{ds['ts_key']}__{st}"
 
-    if style in OPENMAPTILES_STYLES and any(d.get("is_mbtiles") for d in datasets):
-        return style
-    if style in TILESERVER_STYLES and any(d.get("is_pmtiles") for d in datasets):
-        return style
-    if datasets and datasets[0].get("is_mbtiles"):
-        return style if style in OPENMAPTILES_STYLES else "osm_liberty"
-    return style if style in TILESERVER_STYLES else "light"
+    return st
 
 
 def proxy_internal_url(url: str) -> Response:
@@ -409,28 +431,19 @@ def _dataset_bbox_3857(bounds: list[float] | None) -> tuple[float, float, float,
 def _collect_wms_layer_entries() -> list[tuple[str, str, list[float] | None]]:
     datasets = discover_vector_datasets(DATA_DIR)
     entries: list[tuple[str, str, list[float] | None]] = []
-    sorted_pm = sorted(TILESERVER_STYLES, key=lambda s: format_style_title(s))
-    sorted_omt = sorted(OPENMAPTILES_STYLES, key=lambda s: format_style_title(s))
+    sorted_all = sorted(ALL_STYLES, key=lambda s: format_style_title(s))
 
-    # Default top-level convenience style names
-    if any(d.get("is_pmtiles") for d in datasets) or not datasets:
-        primary_pm = next((d for d in datasets if d.get("is_pmtiles")), None)
-        b_pm = primary_pm.get("bounds") if primary_pm else None
-        for st in sorted_pm:
-            entries.append((st, format_style_title(st), b_pm))
-    elif any(d.get("is_mbtiles") for d in datasets):
-        primary_mb = next((d for d in datasets if d.get("is_mbtiles")), None)
-        b_mb = primary_mb.get("bounds") if primary_mb else None
-        for st in sorted_omt:
-            entries.append((st, format_style_title(st), b_mb))
+    # Default top-level convenience style names (all 17 offline styles)
+    default_bounds = datasets[0].get("bounds") if datasets else None
+    for st in sorted_all:
+        entries.append((st, format_style_title(st), default_bounds))
 
-    # Per-dataset explicit layer names (<ts_key>__<style>)
+    # Per-dataset explicit layer names (<ts_key>__<style>) across all 17 styles
     for ds in datasets:
         ts_key = ds["ts_key"]
         ds_name = ds["name"]
         ds_bounds = ds.get("bounds")
-        style_list = sorted_omt if ds.get("is_mbtiles") else sorted_pm
-        for st in style_list:
+        for st in sorted_all:
             entries.append((f"{ts_key}__{st}", f"{ds_name} - {format_style_title(st)}", ds_bounds))
 
     return entries

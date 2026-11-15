@@ -172,11 +172,10 @@
             var z = map.getZoom();
             var params = new URLSearchParams();
             var defaultLayer = (datasets.length > 0) ? datasets[0].name : '';
-            var defaultStyle = isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light';
             if (layerName && layerName !== defaultLayer) {
                 params.set('layer', layerName);
             }
-            if (currentStyle && currentStyle !== defaultStyle) {
+            if (currentStyle && currentStyle !== 'light') {
                 params.set('style', currentStyle);
             }
             var qs = params.toString();
@@ -202,18 +201,27 @@
         ];
         var datasets = [];
         var layerName = initialParams.get('layer') || '';
-        var currentStyle = initialParams.get('style') || '';
+        var currentStyle = initialParams.get('style') || 'light';
         var targetLayer = null;
-
-        function isMbtilesDataset(ds) {
-            return Boolean(ds && (ds.is_mbtiles || (ds.path && ds.path.endsWith('.mbtiles'))));
-        }
 
         function formatStyleTitle(st) {
             var omtMatch = openmaptilesStyles.find(function(o) { return o.id === st; });
             if (omtMatch) return omtMatch.title;
             if (st === 'black_and_white') return 'Protomaps Black & White';
             return 'Protomaps ' + st.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        }
+
+        function getAllStyleOptions() {
+            var combined = tileserverStyles.map(function(st) {
+                return { id: st, title: formatStyleTitle(st) };
+            });
+            openmaptilesStyles.forEach(function(o) {
+                if (!combined.some(function(c) { return c.id === o.id; })) {
+                    combined.push({ id: o.id, title: o.title });
+                }
+            });
+            combined.sort(function(a, b) { return a.title.localeCompare(b.title); });
+            return combined;
         }
 
         function setupState() {
@@ -246,36 +254,18 @@
         function populateBasemapSelect() {
             var basemapSel = document.getElementById('basemap-select');
             basemapSel.innerHTML = '';
-            if (isMbtilesDataset(targetLayer)) {
-                var sortedOmt = openmaptilesStyles.slice().sort(function(a, b) {
-                    return a.title.localeCompare(b.title);
-                });
-                var validOmtIds = sortedOmt.map(function(o) { return o.id; });
-                if (!validOmtIds.includes(currentStyle)) {
-                    currentStyle = validOmtIds.includes('osm_liberty') ? 'osm_liberty' : (validOmtIds[0] || 'osm_liberty');
-                }
-                sortedOmt.forEach(function(o) {
-                    var opt = document.createElement('option');
-                    opt.value = o.id;
-                    opt.innerText = o.title;
-                    if (o.id === currentStyle) opt.selected = true;
-                    basemapSel.appendChild(opt);
-                });
-            } else {
-                var sortedStyles = tileserverStyles.slice().sort(function(a, b) {
-                    return formatStyleTitle(a).localeCompare(formatStyleTitle(b));
-                });
-                if (!sortedStyles.includes(currentStyle)) {
-                    currentStyle = sortedStyles.includes('light') ? 'light' : (sortedStyles[0] || 'light');
-                }
-                sortedStyles.forEach(function(st) {
-                    var opt = document.createElement('option');
-                    opt.value = st;
-                    opt.innerText = formatStyleTitle(st);
-                    if (st === currentStyle) opt.selected = true;
-                    basemapSel.appendChild(opt);
-                });
+            var allStyles = getAllStyleOptions();
+            var validIds = allStyles.map(function(o) { return o.id; });
+            if (!validIds.includes(currentStyle)) {
+                currentStyle = validIds.includes('light') ? 'light' : (validIds[0] || 'light');
             }
+            allStyles.forEach(function(o) {
+                var opt = document.createElement('option');
+                opt.value = o.id;
+                opt.innerText = o.title;
+                if (o.id === currentStyle) opt.selected = true;
+                basemapSel.appendChild(opt);
+            });
         }
 
         function getRegionalBounds(dataset) {
@@ -324,7 +314,7 @@
         }
 
         function onBasemapChange() {
-            currentStyle = document.getElementById('basemap-select').value || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
+            currentStyle = document.getElementById('basemap-select').value || 'light';
             loadMap();
             syncUrlState();
         }
@@ -360,7 +350,7 @@
         }
 
         function getActiveTileServerStyleKey() {
-            var style = currentStyle || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
+            var style = currentStyle || 'light';
             if (targetLayer && targetLayer.ts_key) {
                 return targetLayer.ts_key + '__' + style;
             }
@@ -375,7 +365,7 @@
                 minimapLayer = null;
             }
 
-            var style = currentStyle || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
+            var style = currentStyle || 'light';
             var tsStyleKey = getActiveTileServerStyleKey();
             var format = document.getElementById('format-select').value;
             var maxNative = (targetLayer && targetLayer.maxZoom) ? Math.max(targetLayer.maxZoom, 18) : 18;
@@ -416,7 +406,7 @@
         }
 
         function showIntegrationLinks() {
-            var style = currentStyle || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
+            var style = currentStyle || 'light';
             var tsStyleKey = getActiveTileServerStyleKey();
             var host = window.location.protocol + "//" + window.location.host;
             var xyzPath = targetLayer

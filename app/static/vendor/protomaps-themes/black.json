@@ -3,8 +3,9 @@
   "sources": {
     "protomaps": {
       "type": "vector",
-      "attribution": "<a href=\"https://github.com/protomaps/basemaps\">Protomaps</a> \u00a9 <a href=\"https://osm.org/copyright\">OpenStreetMap</a>",
-      "url": "https://example.com/tiles.json"
+      "tiles": [
+        "/tileserver/data/planet/{z}/{x}/{y}.pbf"
+      ]
     }
   },
   "layers": [

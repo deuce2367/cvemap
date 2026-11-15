@@ -1,13 +1,14 @@
 {
   "version": 8,
   "name": "Protomaps bio",
-  "glyphs": "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-  "sprite": "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+  "glyphs": "/static/vendor/protomaps-assets/fonts/{fontstack}/{range}.pbf",
+  "sprite": "/static/vendor/protomaps-assets/sprites/v4/light",
   "sources": {
     "protomaps": {
       "type": "vector",
-      "url": "pmtiles://https://build.protomaps.com/20240808.pmtiles",
-      "attribution": "<a href=\"https://protomaps.com\">Protomaps</a> \u00a9 <a href=\"https://openstreetmap.org\">OpenStreetMap</a>"
+      "tiles": [
+        "/tileserver/data/planet/{z}/{x}/{y}.pbf"
+      ]
     }
   },
   "layers": [
