@@ -64,9 +64,9 @@
             <option value="">Loading datasets...</option>
         </select>
 
-        <label for="style-select">Basemap:</label>
+        <label for="style-select">Map Style:</label>
         <select id="style-select" onchange="changeStyle(this.value)">
-            <option value="">Loading basemaps...</option>
+            <option value="">Loading styles...</option>
         </select>
 
         <label for="format-select">Tile Protocol:</label>
@@ -125,6 +125,7 @@
         var fallbackMinimap = null;
         var fallbackTileLayer = null;
         var fallbackMiniLayer = null;
+        var fallbackMiniRect = null;
         var usingFallback = false;
         var leafletLoadingPromise = null;
         var layerName = urlParams.get('layer') || "";
@@ -321,6 +322,7 @@
                 try { fallbackMinimap.remove(); } catch (e) {}
                 fallbackMinimap = null;
                 fallbackMiniLayer = null;
+                fallbackMiniRect = null;
             }
             document.getElementById('map').innerHTML = '';
             document.getElementById('minimap').innerHTML = '';
@@ -398,22 +400,44 @@
                     maxNativeZoom: dynamicMaxZoom || 18
                 }).addTo(fallbackMinimap);
 
+                fallbackMiniRect = L.rectangle([[-90, -180], [90, 180]], {
+                    color: "#ff0000",
+                    weight: 2,
+                    fillOpacity: 0.12
+                }).addTo(fallbackMinimap);
+
                 fallbackMap.on('mousemove', function(e) {
                     lastPointerLatLng = { lat: e.latlng.lat, lng: e.latlng.lng };
                     renderCoordsDisplay(fallbackMap.getZoom(), e.latlng.lat, e.latlng.lng);
                 });
+
+                function syncFallbackMinimap() {
+                    if (!fallbackMap || !fallbackMinimap) return;
+                    var c = fallbackMap.getCenter().wrap();
+                    var z = fallbackMap.getZoom();
+                    if (fallbackMiniRect) {
+                        var b = fallbackMap.getBounds();
+                        var sw = b.getSouthWest().wrap();
+                        var ne = b.getNorthEast().wrap();
+                        if (sw.lng > ne.lng) {
+                            ne.lng += 360;
+                        }
+                        fallbackMiniRect.setBounds(L.latLngBounds(sw, ne));
+                        fallbackMiniRect.bringToFront();
+                    }
+                    fallbackMinimap.setView(c, Math.max(0, z - 5), { animate: false });
+                }
 
                 function syncFallbackState() {
                     var c = fallbackMap.getCenter();
                     var z = fallbackMap.getZoom();
                     var pt = lastPointerLatLng || c;
                     renderCoordsDisplay(z, pt.lat, pt.lng);
-                    if (fallbackMinimap) {
-                        fallbackMinimap.setView(c, Math.max(0, z - 5), { animate: false });
-                    }
+                    syncFallbackMinimap();
                     window.history.replaceState(null, '', window.location.pathname + window.location.search +
                         '#' + z + '/' + c.lat.toFixed(4) + '/' + c.lng.toFixed(4));
                 }
+                fallbackMap.on('move', syncFallbackMinimap);
                 fallbackMap.on('zoom', syncFallbackState);
                 fallbackMap.on('moveend', syncFallbackState);
                 syncFallbackState();
@@ -445,6 +469,79 @@
                 });
         }
 
+        function buildViewportBoundsGeoJSON(bounds) {
+            if (!bounds) {
+                return { type: 'FeatureCollection', features: [] };
+            }
+            var south = Math.max(-85.0511, Math.min(85.0511, bounds.getSouth()));
+            var north = Math.max(-85.0511, Math.min(85.0511, bounds.getNorth()));
+            var west = bounds.getWest();
+            var east = bounds.getEast();
+            var rings = [];
+            if (east - west >= 360) {
+                rings.push([[-180, south], [180, south], [180, north], [-180, north], [-180, south]]);
+            } else {
+                var w = ((((west + 180) % 360) + 360) % 360) - 180;
+                var e = w + (east - west);
+                if (e <= 180) {
+                    rings.push([[w, south], [e, south], [e, north], [w, north], [w, south]]);
+                } else {
+                    rings.push([[w, south], [180, south], [180, north], [w, north], [w, south]]);
+                    var eWrap = e - 360;
+                    rings.push([[-180, south], [eWrap, south], [eWrap, north], [-180, north], [-180, south]]);
+                }
+            }
+            return {
+                type: 'FeatureCollection',
+                features: rings.map(function(ring) {
+                    return {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: { type: 'Polygon', coordinates: [ring] }
+                    };
+                })
+            };
+        }
+
+        function prepareMiniStyle(baseStyle, initialBounds) {
+            var miniStyle = JSON.parse(JSON.stringify(baseStyle));
+            miniStyle.sources = miniStyle.sources || {};
+            miniStyle.sources['minimap-viewport'] = {
+                type: 'geojson',
+                data: buildViewportBoundsGeoJSON(initialBounds)
+            };
+            miniStyle.layers = Array.isArray(miniStyle.layers) ? miniStyle.layers : [];
+            miniStyle.layers.push({
+                id: 'minimap-viewport-fill',
+                type: 'fill',
+                source: 'minimap-viewport',
+                paint: {
+                    'fill-color': '#ff0000',
+                    'fill-opacity': 0.12
+                }
+            });
+            miniStyle.layers.push({
+                id: 'minimap-viewport-outline',
+                type: 'line',
+                source: 'minimap-viewport',
+                paint: {
+                    'line-color': '#ff0000',
+                    'line-width': 2
+                }
+            });
+            return miniStyle;
+        }
+
+        function syncMinimapViewportBox() {
+            if (!map || !minimap) return;
+            try {
+                var src = minimap.getSource('minimap-viewport');
+                if (src && typeof src.setData === 'function') {
+                    src.setData(buildViewportBoundsGeoJSON(map.getBounds()));
+                }
+            } catch (e) {}
+        }
+
         function initMap() {
             var select = document.getElementById('style-select');
             if (!select.value || !targetLayer) {
@@ -458,7 +555,6 @@
             }
 
             loadStyle(select.value, function(style) {
-                var miniStyle = JSON.parse(JSON.stringify(style));
                 try {
                     map = new maplibregl.Map({
                         container: 'map',
@@ -508,25 +604,32 @@
                 });
 
                 try {
+                    var miniStyle = prepareMiniStyle(style, map.getBounds());
                     minimap = new maplibregl.Map({
                         container: 'minimap',
                         style: miniStyle,
                         center: map.getCenter(),
-                        zoom: Math.max(0, map.getZoom() - 6),
+                        zoom: Math.max(0, map.getZoom() - 5),
                         interactive: false,
                         attributionControl: false
                     });
 
-                    map.on('move', function() {
-                        if (minimap) {
-                            minimap.jumpTo({
-                                center: map.getCenter(),
-                                zoom: Math.max(0, map.getZoom() - 6),
-                                bearing: map.getBearing(),
-                                pitch: map.getPitch()
-                            });
-                        }
-                    });
+                    function syncWebGLMinimap() {
+                        if (!map || !minimap) return;
+                        minimap.jumpTo({
+                            center: map.getCenter(),
+                            zoom: Math.max(0, map.getZoom() - 5),
+                            bearing: map.getBearing(),
+                            pitch: map.getPitch()
+                        });
+                        syncMinimapViewportBox();
+                    }
+
+                    minimap.on('load', syncMinimapViewportBox);
+                    minimap.on('style.load', syncMinimapViewportBox);
+                    map.on('move', syncWebGLMinimap);
+                    map.on('zoom', syncWebGLMinimap);
+                    map.on('resize', syncWebGLMinimap);
                 } catch (miniErr) {
                     console.warn("Minimap WebGL context unavailable:", miniErr);
                     document.getElementById('minimap').style.display = 'none';
@@ -553,7 +656,7 @@
                 return;
             }
             loadStyle(styleId, function(style) {
-                var miniStyle = JSON.parse(JSON.stringify(style));
+                var miniStyle = prepareMiniStyle(style, map ? map.getBounds() : null);
                 if (map) map.setStyle(style);
                 if (minimap) minimap.setStyle(miniStyle);
             });

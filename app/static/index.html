@@ -45,7 +45,7 @@
       <div class="modal-content">
         <span class="close" onclick="document.getElementById('integrationModal').style.display='none'">&times;</span>
         <h2>Raster Integration Links</h2>
-        <p>Use these URLs to load the currently selected basemap into GIS software (QGIS, ArcGIS, Leaflet, OpenLayers, etc.).</p>
+        <p>Use these URLs to load the currently selected map style into GIS software (QGIS, ArcGIS, Leaflet, OpenLayers, etc.).</p>
 
         <h3>XYZ Tile Layer (Spherical Mercator)</h3>
         <p>Standard slippy XYZ raster tiles:</p>
@@ -82,9 +82,9 @@
             <option value="">Loading datasets...</option>
         </select>
 
-        <label for="basemap-select">Basemap:</label>
+        <label for="basemap-select">Map Style:</label>
         <select id="basemap-select" onchange="onBasemapChange()">
-            <option value="">Loading basemaps...</option>
+            <option value="">Loading styles...</option>
         </select>
 
         <label for="format-select">Tile Protocol:</label>
