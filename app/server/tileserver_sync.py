@@ -1,8 +1,10 @@
+import copy
 import glob
 import gzip
 import json
 import logging
 import os
+import re
 import signal
 import sqlite3
 import struct
@@ -26,10 +28,46 @@ TILESERVER_STYLES = [
     "white",
 ]
 
+OPENMAPTILES_STYLE_DEFS: dict[str, dict[str, str]] = {
+    "dark_matter": {
+        "title": "Dark Matter (Dark)",
+        "vendor_dir": "carto-dark",
+        "sprite": "carto-dark/sprite",
+    },
+    "osm_bright": {
+        "title": "OSM Bright (Colorful)",
+        "vendor_dir": "carto-color",
+        "sprite": "carto-color/sprite",
+    },
+    "osm_liberty": {
+        "title": "OSM Liberty (Classic OSM)",
+        "vendor_dir": "osm-liberty",
+        "sprite": "osm-liberty/osm-liberty",
+    },
+    "positron": {
+        "title": "Positron (Light)",
+        "vendor_dir": "carto-light",
+        "sprite": "carto-light/sprite",
+    },
+}
+
+OPENMAPTILES_STYLES = list(OPENMAPTILES_STYLE_DEFS.keys())
+
 _HEADER_CACHE: dict[str, tuple[float, int, dict]] = {}
 
 
+def sanitize_tileserver_id(raw: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", raw).strip("_")
+    return cleaned or "dataset"
+
+
+def make_dataset_style_id(dataset_name: str, style_id: str) -> str:
+    return f"{sanitize_tileserver_id(dataset_name)}__{style_id}"
+
+
 def format_style_title(style_id: str) -> str:
+    if style_id in OPENMAPTILES_STYLE_DEFS:
+        return OPENMAPTILES_STYLE_DEFS[style_id]["title"]
     if style_id == "black_and_white":
         return "Protomaps Black & White"
     return "Protomaps " + style_id.replace("_", " ").title()
@@ -234,6 +272,17 @@ def discover_vector_datasets(data_dir: str) -> list[dict]:
 
     datasets: list[dict] = []
     seen_names: set[str] = set()
+    seen_ts_keys: set[str] = set()
+
+    def _alloc_ts_key(raw_name: str) -> str:
+        base_key = sanitize_tileserver_id(raw_name)
+        candidate = base_key
+        idx = 2
+        while candidate in seen_ts_keys:
+            candidate = f"{base_key}_{idx}"
+            idx += 1
+        seen_ts_keys.add(candidate)
+        return candidate
 
     for pf in discover_pmtiles_files(data_dir):
         base = os.path.splitext(os.path.basename(pf))[0]
@@ -242,6 +291,7 @@ def discover_vector_datasets(data_dir: str) -> list[dict]:
         pm_info = inspect_pmtiles(pf)
         entry = {
             "name": name,
+            "ts_key": _alloc_ts_key(name),
             "path": os.path.relpath(pf, data_dir),
             "is_mbtiles": False,
             "is_pmtiles": True,
@@ -268,6 +318,7 @@ def discover_vector_datasets(data_dir: str) -> list[dict]:
         seen_names.add(name)
         entry = {
             "name": name,
+            "ts_key": _alloc_ts_key(name),
             "path": os.path.relpath(mf, data_dir),
             "is_mbtiles": True,
             "is_pmtiles": False,
@@ -306,57 +357,209 @@ def adapt_style_schema(style_obj: dict, pmap_prefix: bool) -> dict:
     return json.loads(text)
 
 
+def _resolve_vendor_dir(tileserver_template_dir: str) -> str:
+    candidates = [
+        os.path.join(os.path.dirname(os.path.abspath(tileserver_template_dir)), "static", "vendor"),
+        os.path.join(os.path.dirname(os.path.abspath(tileserver_template_dir)), "app", "static", "vendor"),
+        os.path.abspath("static/vendor"),
+        os.path.abspath("app/static/vendor"),
+    ]
+    for c in candidates:
+        if os.path.isdir(c):
+            return c
+    return ""
+
+
+def _prepare_runtime_assets(tileserver_template_dir: str, vendor_dir: str, runtime_dir: str) -> tuple[str, str]:
+    """Assemble merged fonts and sprites directories in runtime_dir for both Protomaps and OpenMapTiles styles."""
+    rt_fonts = os.path.abspath(os.path.join(runtime_dir, "fonts"))
+    rt_sprites = os.path.abspath(os.path.join(runtime_dir, "sprites"))
+    os.makedirs(rt_fonts, exist_ok=True)
+    os.makedirs(rt_sprites, exist_ok=True)
+
+    tpl_fonts = os.path.abspath(os.path.join(tileserver_template_dir, "fonts"))
+    if os.path.isdir(tpl_fonts):
+        for name in os.listdir(tpl_fonts):
+            src = os.path.join(tpl_fonts, name)
+            dst = os.path.join(rt_fonts, name)
+            if not os.path.lexists(dst):
+                try:
+                    os.symlink(src, dst)
+                except OSError:
+                    pass
+
+    tpl_sprites = os.path.abspath(os.path.join(tileserver_template_dir, "sprites"))
+    if os.path.isdir(tpl_sprites):
+        for name in os.listdir(tpl_sprites):
+            src = os.path.join(tpl_sprites, name)
+            dst = os.path.join(rt_sprites, name)
+            if not os.path.lexists(dst):
+                try:
+                    os.symlink(src, dst)
+                except OSError:
+                    pass
+
+    if vendor_dir:
+        vendor_glyphs = os.path.abspath(os.path.join(vendor_dir, "font-glyphs", "glyphs"))
+        if os.path.isdir(vendor_glyphs):
+            for name in os.listdir(vendor_glyphs):
+                src = os.path.join(vendor_glyphs, name)
+                dst = os.path.join(rt_fonts, name)
+                if os.path.isdir(src) and not os.path.lexists(dst):
+                    try:
+                        os.symlink(src, dst)
+                    except OSError:
+                        pass
+
+        for sub in ("carto-light", "carto-dark", "carto-color", "osm-liberty"):
+            src = os.path.abspath(os.path.join(vendor_dir, sub, "sprites"))
+            dst = os.path.join(rt_sprites, sub)
+            if os.path.isdir(src) and not os.path.lexists(dst):
+                try:
+                    os.symlink(src, dst)
+                except OSError:
+                    pass
+
+    return rt_fonts, rt_sprites
+
+
+def _adapt_openmaptiles_style(style_obj: dict, ts_key: str, sprite_ref: str) -> dict:
+    adapted = copy.deepcopy(style_obj)
+    sources = adapted.get("sources") or {}
+    if "natural_earth_shaded_relief" in sources:
+        del sources["natural_earth_shaded_relief"]
+    if "layers" in adapted and isinstance(adapted["layers"], list):
+        adapted["layers"] = [
+            lyr for lyr in adapted["layers"] if lyr.get("source") != "natural_earth_shaded_relief"
+        ]
+    mbtiles_src = {"type": "vector", "url": f"mbtiles://{ts_key}"}
+    if "openmaptiles" in sources:
+        sources["openmaptiles"] = mbtiles_src
+    elif "carto" in sources:
+        sources["carto"] = mbtiles_src
+    else:
+        sources["openmaptiles"] = mbtiles_src
+    adapted["sources"] = sources
+    adapted["glyphs"] = "{fontstack}/{range}.pbf"
+    adapted["sprite"] = sprite_ref
+    return adapted
+
+
 def sync_tileserver_runtime(
     data_dir: str = "/app/data",
     tileserver_template_dir: str = "/app/tileserver",
     runtime_dir: str = "/tmp/tileserver",
     reload_process: bool = False,
 ) -> str:
-    """Generate runtime TileServer-GL config and schema-adapted styles. Returns config path."""
+    """Generate runtime TileServer-GL config and schema-adapted styles for all datasets. Returns config path."""
     if not os.path.isdir(tileserver_template_dir):
         return ""
 
     os.makedirs(data_dir, exist_ok=True)
     migrate_data_directory(data_dir)
-    os.makedirs(os.path.join(runtime_dir, "styles"), exist_ok=True)
+    styles_out_dir = os.path.join(runtime_dir, "styles")
+    os.makedirs(styles_out_dir, exist_ok=True)
+
+    vendor_dir = _resolve_vendor_dir(tileserver_template_dir)
+    fonts_dir, sprites_dir = _prepare_runtime_assets(tileserver_template_dir, vendor_dir, runtime_dir)
+
+    datasets = discover_vector_datasets(data_dir)
     primary_pmtiles = select_primary_pmtiles(data_dir)
 
-    pmap_prefix = True
-    if primary_pmtiles and os.path.isfile(primary_pmtiles):
-        info = inspect_pmtiles(primary_pmtiles)
-        pmap_prefix = info["pmap_prefix"]
-
+    protomaps_templates: dict[str, dict] = {}
     src_styles_dir = os.path.join(tileserver_template_dir, "styles")
-    styles_cfg = {}
     for style_file in sorted(glob.glob(os.path.join(src_styles_dir, "*.json"))):
-        fname = os.path.basename(style_file)
-        style_id = os.path.splitext(fname)[0]
+        style_id = os.path.splitext(os.path.basename(style_file))[0]
         with open(style_file, "r") as f:
-            style_obj = json.load(f)
-        adapted = adapt_style_schema(style_obj, pmap_prefix=pmap_prefix)
-        dst_style_path = os.path.join(runtime_dir, "styles", fname)
-        with open(dst_style_path, "w") as f:
-            json.dump(adapted, f)
-        styles_cfg[style_id] = {"style": fname}
+            protomaps_templates[style_id] = json.load(f)
 
-    data_cfg = {}
+    omt_templates: dict[str, dict] = {}
+    if vendor_dir:
+        for style_id, meta in OPENMAPTILES_STYLE_DEFS.items():
+            omt_path = os.path.join(vendor_dir, meta["vendor_dir"], "style.json")
+            if os.path.isfile(omt_path):
+                with open(omt_path, "r") as f:
+                    omt_templates[style_id] = json.load(f)
+
+    data_cfg: dict[str, dict[str, str]] = {}
+    styles_cfg: dict[str, dict[str, str]] = {}
+
     if primary_pmtiles and os.path.isfile(primary_pmtiles):
         data_cfg["planet"] = {"pmtiles": os.path.abspath(primary_pmtiles)}
-        for p in discover_pmtiles_files(data_dir):
-            key = os.path.splitext(os.path.basename(p))[0]
-            if key != "planet" and key not in data_cfg:
-                data_cfg[key] = {"pmtiles": os.path.abspath(p)}
+
+    primary_pm_ts_key = ""
+    if primary_pmtiles and os.path.isfile(primary_pmtiles):
+        rel_primary = os.path.relpath(primary_pmtiles, data_dir)
+        matched = next((d for d in datasets if d["path"] == rel_primary), None)
+        if matched:
+            primary_pm_ts_key = matched["ts_key"]
+
+    primary_mb_ts_key = ""
+    first_mb = next((d for d in datasets if d.get("is_mbtiles")), None)
+    if first_mb:
+        primary_mb_ts_key = first_mb["ts_key"]
+
+    for ds in datasets:
+        ts_key = ds["ts_key"]
+        abs_archive = os.path.abspath(os.path.join(data_dir, ds["path"]))
+        if ds.get("is_pmtiles"):
+            data_cfg[ts_key] = {"pmtiles": abs_archive}
+            if not primary_pm_ts_key:
+                primary_pm_ts_key = ts_key
+            pmap_prefix = bool(ds.get("pmap_prefix", False))
+            for style_id, tpl in protomaps_templates.items():
+                base_obj = copy.deepcopy(tpl)
+                base_obj["sources"] = {"protomaps": {"type": "vector", "url": f"pmtiles://{ts_key}"}}
+                adapted = adapt_style_schema(base_obj, pmap_prefix=pmap_prefix)
+                ds_style_key = f"{ts_key}__{style_id}"
+                ds_fname = f"{ds_style_key}.json"
+                with open(os.path.join(styles_out_dir, ds_fname), "w") as f:
+                    json.dump(adapted, f)
+                styles_cfg[ds_style_key] = {"style": ds_fname}
+        elif ds.get("is_mbtiles"):
+            data_cfg[ts_key] = {"mbtiles": abs_archive}
+            for style_id, tpl in omt_templates.items():
+                sprite_ref = OPENMAPTILES_STYLE_DEFS[style_id]["sprite"]
+                adapted = _adapt_openmaptiles_style(tpl, ts_key=ts_key, sprite_ref=sprite_ref)
+                ds_style_key = f"{ts_key}__{style_id}"
+                ds_fname = f"{ds_style_key}.json"
+                with open(os.path.join(styles_out_dir, ds_fname), "w") as f:
+                    json.dump(adapted, f)
+                styles_cfg[ds_style_key] = {"style": ds_fname}
+
+    # Register bare style aliases for the primary PMTiles and primary MBTiles datasets
+    if primary_pm_ts_key:
+        for style_id in protomaps_templates:
+            target_fname = f"{primary_pm_ts_key}__{style_id}.json"
+            alias_fname = f"{style_id}.json"
+            src_file = os.path.join(styles_out_dir, target_fname)
+            if os.path.isfile(src_file):
+                with open(src_file, "r") as f_in, open(os.path.join(styles_out_dir, alias_fname), "w") as f_out:
+                    f_out.write(f_in.read())
+                styles_cfg[style_id] = {"style": alias_fname}
+
+    if primary_mb_ts_key:
+        for style_id in omt_templates:
+            target_fname = f"{primary_mb_ts_key}__{style_id}.json"
+            alias_fname = f"{style_id}.json"
+            src_file = os.path.join(styles_out_dir, target_fname)
+            if os.path.isfile(src_file) and style_id not in styles_cfg:
+                with open(src_file, "r") as f_in, open(os.path.join(styles_out_dir, alias_fname), "w") as f_out:
+                    f_out.write(f_in.read())
+                styles_cfg[style_id] = {"style": alias_fname}
 
     ts_config = {
         "options": {
+            "minRendererPoolSizes": [0, 0, 0],
+            "maxRendererPoolSizes": [8, 4, 2],
             "paths": {
                 "root": "",
-                "fonts": os.path.abspath(os.path.join(tileserver_template_dir, "fonts")),
-                "sprites": os.path.abspath(os.path.join(tileserver_template_dir, "sprites")),
-                "styles": os.path.abspath(os.path.join(runtime_dir, "styles")),
+                "fonts": fonts_dir,
+                "sprites": sprites_dir,
+                "styles": os.path.abspath(styles_out_dir),
                 "mbtiles": os.path.abspath(data_dir),
                 "pmtiles": os.path.abspath(data_dir),
-            }
+            },
         },
         "styles": styles_cfg if data_cfg else {},
         "data": data_cfg,

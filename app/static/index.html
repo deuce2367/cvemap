@@ -22,12 +22,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/leaflet/dist/leaflet.css" />
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
         #map { height: 100%; width: 100%; background: #e6eef4; }
-        #topbar { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 240px; width: 240px; box-sizing: border-box; font-family: sans-serif; }
-        select { margin-top: 5px; padding: 5px; width: 100%; font-size: 13px; margin-bottom: 10px; }
-        .btn { display: inline-block; margin-top: 6px; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
-        .btn:hover { background: #e0e0e0; }
+        .control-panel { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 240px; width: 240px; box-sizing: border-box; font-family: sans-serif; }
+        .control-panel .logo-wrap { text-align: center; margin: 0 0 6px 0; line-height: 0; }
+        .control-panel .logo-wrap img { width: 160px; max-width: 160px; border-radius: 8px; display: inline-block; }
+        .control-panel h3 { margin: 0 0 4px 0; font-size: 18px; line-height: 22px; text-align: center; }
+        .control-panel .subtitle { margin: 0 0 10px 0; font-size: 12px; line-height: 16px; color: #555; text-align: center; white-space: nowrap; }
+        .control-panel label { display: block; margin: 0; font-size: 12px; line-height: 15px; font-weight: bold; color: #222; }
+        .control-panel select { display: block; margin: 4px 0 10px 0; padding: 5px; width: 100%; height: 30px; font-size: 13px; box-sizing: border-box; }
+        .control-panel .btn { display: block; margin: 4px 0 0 0; padding: 6px 10px; height: 30px; line-height: 16px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
+        .control-panel .btn:hover { background: #e0e0e0; }
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
         .modal-content { background-color: #fefefe; margin: 8% auto; padding: 20px; border: 1px solid #888; width: 60%; max-width: 680px; border-radius: 6px; font-family: sans-serif; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -57,25 +62,30 @@
       </div>
     </div>
 
-    <div id="topbar">
-        <div style="text-align: center; margin-bottom: 5px;">
-            <img src="/static/sisyphus_logo.jpg" style="max-width: 160px; border-radius: 8px;">
+    <div id="topbar" class="control-panel">
+        <div class="logo-wrap">
+            <img src="/static/sisyphus_logo.jpg" alt="CVEMAP Logo">
         </div>
-        <h3 style="margin-top: 0; text-align: center;">Raster Viewer</h3>
-        <p style="font-size: 13px; color: #555;">XYZ &amp; WMS via TileServer GL</p>
+        <h3>Raster Viewer</h3>
+        <p class="subtitle">XYZ &amp; WMS via TileServer GL</p>
 
-        <label for="viewer-select" style="font-size: 12px; font-weight: bold;">Viewer:</label>
+        <label for="viewer-select">Viewer:</label>
         <select id="viewer-select" onchange="onViewerChange(this.value)">
             <option value="raster" selected>Raster</option>
             <option value="vector">Vector</option>
         </select>
 
-        <label for="basemap-select" style="font-size: 12px; font-weight: bold;">Basemap:</label>
+        <label for="layer-select">Map Dataset:</label>
+        <select id="layer-select" onchange="onLayerChange()">
+            <option value="">Loading datasets...</option>
+        </select>
+
+        <label for="basemap-select">Basemap:</label>
         <select id="basemap-select" onchange="onBasemapChange()">
             <option value="">Loading basemaps...</option>
         </select>
 
-        <label for="format-select" style="font-size: 12px; font-weight: bold;">Tile Protocol:</label>
+        <label for="format-select">Tile Protocol:</label>
         <select id="format-select" onchange="updateFormat()">
             <option value="xyz">XYZ (Slippy Tiles)</option>
             <option value="wms">WMS (OGC GetMap)</option>
@@ -160,8 +170,17 @@
         function syncUrlState() {
             var c = map.getCenter().wrap();
             var z = map.getZoom();
-            var qs = currentStyle && currentStyle !== 'light' ? ('?style=' + encodeURIComponent(currentStyle)) : '';
-            window.history.replaceState(null, '', window.location.pathname + qs + '#' + z + '/' + c.lat.toFixed(4) + '/' + c.lng.toFixed(4));
+            var params = new URLSearchParams();
+            var defaultLayer = (datasets.length > 0) ? datasets[0].name : '';
+            var defaultStyle = isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light';
+            if (layerName && layerName !== defaultLayer) {
+                params.set('layer', layerName);
+            }
+            if (currentStyle && currentStyle !== defaultStyle) {
+                params.set('style', currentStyle);
+            }
+            var qs = params.toString();
+            window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + '#' + z + '/' + c.lat.toFixed(4) + '/' + c.lng.toFixed(4));
         }
 
         map.on('move', updateMinimap);
@@ -175,30 +194,88 @@
         var noDataSvg = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="rgba(0,0,0,0.05)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/><text x="128" y="128" font-family="sans-serif" font-size="16" font-weight="bold" fill="#333" text-anchor="middle" dominant-baseline="middle">No Data</text></svg>');
 
         var tileserverStyles = ['bio', 'black', 'black_and_white', 'dark', 'dusk_rose', 'flat', 'grayscale', 'iris_bloom', 'light', 'rainforest', 'seafoam', 'sol', 'white'];
-        var currentStyle = initialParams.get('style') || 'light';
-        var primaryDataset = null;
+        var openmaptilesStyles = [
+            { id: 'dark_matter', title: 'Dark Matter (Dark)' },
+            { id: 'osm_bright', title: 'OSM Bright (Colorful)' },
+            { id: 'osm_liberty', title: 'OSM Liberty (Classic OSM)' },
+            { id: 'positron', title: 'Positron (Light)' }
+        ];
+        var datasets = [];
+        var layerName = initialParams.get('layer') || '';
+        var currentStyle = initialParams.get('style') || '';
+        var targetLayer = null;
+
+        function isMbtilesDataset(ds) {
+            return Boolean(ds && (ds.is_mbtiles || (ds.path && ds.path.endsWith('.mbtiles'))));
+        }
 
         function formatStyleTitle(st) {
+            var omtMatch = openmaptilesStyles.find(function(o) { return o.id === st; });
+            if (omtMatch) return omtMatch.title;
             if (st === 'black_and_white') return 'Protomaps Black & White';
             return 'Protomaps ' + st.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        }
+
+        function setupState() {
+            targetLayer = datasets.find(function(d) { return d.name === layerName; }) || null;
+            if (!targetLayer && datasets.length > 0) {
+                targetLayer = datasets[0];
+                layerName = targetLayer.name;
+            }
+        }
+
+        function populateLayerSelect() {
+            var layerSel = document.getElementById('layer-select');
+            layerSel.innerHTML = '';
+            if (datasets.length === 0) {
+                var emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.innerText = 'No datasets found in app/data';
+                layerSel.appendChild(emptyOpt);
+                return;
+            }
+            datasets.forEach(function(d) {
+                var opt = document.createElement('option');
+                opt.value = d.name;
+                opt.innerText = d.name;
+                if (d.name === layerName) opt.selected = true;
+                layerSel.appendChild(opt);
+            });
         }
 
         function populateBasemapSelect() {
             var basemapSel = document.getElementById('basemap-select');
             basemapSel.innerHTML = '';
-            var sortedStyles = tileserverStyles.slice().sort(function(a, b) {
-                return formatStyleTitle(a).localeCompare(formatStyleTitle(b));
-            });
-            if (!sortedStyles.includes(currentStyle)) {
-                currentStyle = sortedStyles.includes('light') ? 'light' : (sortedStyles[0] || 'light');
+            if (isMbtilesDataset(targetLayer)) {
+                var sortedOmt = openmaptilesStyles.slice().sort(function(a, b) {
+                    return a.title.localeCompare(b.title);
+                });
+                var validOmtIds = sortedOmt.map(function(o) { return o.id; });
+                if (!validOmtIds.includes(currentStyle)) {
+                    currentStyle = validOmtIds.includes('osm_liberty') ? 'osm_liberty' : (validOmtIds[0] || 'osm_liberty');
+                }
+                sortedOmt.forEach(function(o) {
+                    var opt = document.createElement('option');
+                    opt.value = o.id;
+                    opt.innerText = o.title;
+                    if (o.id === currentStyle) opt.selected = true;
+                    basemapSel.appendChild(opt);
+                });
+            } else {
+                var sortedStyles = tileserverStyles.slice().sort(function(a, b) {
+                    return formatStyleTitle(a).localeCompare(formatStyleTitle(b));
+                });
+                if (!sortedStyles.includes(currentStyle)) {
+                    currentStyle = sortedStyles.includes('light') ? 'light' : (sortedStyles[0] || 'light');
+                }
+                sortedStyles.forEach(function(st) {
+                    var opt = document.createElement('option');
+                    opt.value = st;
+                    opt.innerText = formatStyleTitle(st);
+                    if (st === currentStyle) opt.selected = true;
+                    basemapSel.appendChild(opt);
+                });
             }
-            sortedStyles.forEach(function(st) {
-                var opt = document.createElement('option');
-                opt.value = st;
-                opt.innerText = formatStyleTitle(st);
-                if (st === currentStyle) opt.selected = true;
-                basemapSel.appendChild(opt);
-            });
         }
 
         function getRegionalBounds(dataset) {
@@ -209,16 +286,45 @@
             return b;
         }
 
+        function isPointInBounds(lng, lat, b) {
+            return lng >= b[0] && lng <= b[2] && lat >= b[1] && lat <= b[3];
+        }
+
+        function maybeFitDatasetBounds(forceIfNoHash) {
+            var regBounds = getRegionalBounds(targetLayer);
+            if (!regBounds) return;
+            var c = map.getCenter().wrap();
+            if (forceIfNoHash || !isPointInBounds(c.lng, c.lat, regBounds)) {
+                map.fitBounds([[regBounds[1], regBounds[0]], [regBounds[3], regBounds[2]]], {
+                    padding: [40, 40],
+                    maxZoom: (targetLayer && targetLayer.maxZoom) ? targetLayer.maxZoom : 14
+                });
+            }
+        }
+
         function onViewerChange(mode) {
             if (mode === 'vector') {
                 var c = map.getCenter().wrap();
                 var z = map.getZoom();
-                window.location.href = '/modern?style=' + encodeURIComponent(currentStyle) + '#' + z + '/' + c.lat.toFixed(4) + '/' + c.lng.toFixed(4);
+                var params = new URLSearchParams();
+                if (layerName) params.set('layer', layerName);
+                if (currentStyle) params.set('style', currentStyle);
+                var qs = params.toString();
+                window.location.href = '/modern' + (qs ? '?' + qs : '') + '#' + z + '/' + c.lat.toFixed(4) + '/' + c.lng.toFixed(4);
             }
         }
 
+        function onLayerChange() {
+            layerName = document.getElementById('layer-select').value || '';
+            setupState();
+            populateBasemapSelect();
+            maybeFitDatasetBounds(false);
+            loadMap();
+            syncUrlState();
+        }
+
         function onBasemapChange() {
-            currentStyle = document.getElementById('basemap-select').value || 'light';
+            currentStyle = document.getElementById('basemap-select').value || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
             loadMap();
             syncUrlState();
         }
@@ -234,25 +340,31 @@
                 if (Array.isArray(data.tileserver_styles) && data.tileserver_styles.length > 0) {
                     tileserverStyles = data.tileserver_styles;
                 }
-                primaryDataset = data.primary_dataset || null;
+                if (Array.isArray(data.openmaptiles_styles) && data.openmaptiles_styles.length > 0) {
+                    openmaptilesStyles = data.openmaptiles_styles;
+                }
+                datasets = Array.isArray(data.datasets) ? data.datasets : [];
+                setupState();
+                populateLayerSelect();
                 populateBasemapSelect();
 
-                if (!initialHash && primaryDataset) {
-                    var regBounds = getRegionalBounds(primaryDataset);
-                    if (regBounds) {
-                        map.fitBounds([[regBounds[1], regBounds[0]], [regBounds[3], regBounds[2]]], {
-                            padding: [40, 40],
-                            maxZoom: primaryDataset.maxZoom || 14
-                        });
-                    }
-                }
+                maybeFitDatasetBounds(!initialHash);
                 loadMap();
                 updateCoords();
             } catch (e) {
                 console.error("Error loading basemap config", e);
+                populateLayerSelect();
                 populateBasemapSelect();
                 loadMap();
             }
+        }
+
+        function getActiveTileServerStyleKey() {
+            var style = currentStyle || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
+            if (targetLayer && targetLayer.ts_key) {
+                return targetLayer.ts_key + '__' + style;
+            }
+            return style;
         }
 
         function loadMap() {
@@ -263,13 +375,17 @@
                 minimapLayer = null;
             }
 
-            var style = currentStyle || 'light';
+            var style = currentStyle || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
+            var tsStyleKey = getActiveTileServerStyleKey();
             var format = document.getElementById('format-select').value;
-            var maxNative = (primaryDataset && primaryDataset.maxZoom) ? Math.max(primaryDataset.maxZoom, 18) : 18;
+            var maxNative = (targetLayer && targetLayer.maxZoom) ? Math.max(targetLayer.maxZoom, 18) : 18;
+            var xyzUrl = targetLayer
+                ? ('/xyz/' + encodeURIComponent(targetLayer.name) + '/' + encodeURIComponent(style) + '/{z}/{x}/{y}.png')
+                : ('/xyz/' + encodeURIComponent(style) + '/{z}/{x}/{y}.png');
 
             if (format === 'wms') {
                 var wmsLayer = L.tileLayer.wms('/wms', {
-                    layers: style,
+                    layers: tsStyleKey,
                     format: 'image/png',
                     transparent: false,
                     tileSize: 512,
@@ -278,8 +394,7 @@
                 wmsLayer.addTo(map);
                 currentLayers.push(wmsLayer);
             } else {
-                var tsUrl = '/tileserver/styles/' + style + '/{z}/{x}/{y}.png?v=3';
-                var tsLayer = L.tileLayer(tsUrl, {
+                var tsLayer = L.tileLayer(xyzUrl, {
                     minZoom: 0,
                     maxZoom: 18,
                     maxNativeZoom: maxNative,
@@ -290,7 +405,7 @@
                 currentLayers.push(tsLayer);
             }
 
-            minimapLayer = L.tileLayer('/tileserver/styles/' + style + '/{z}/{x}/{y}.png?v=3', {
+            minimapLayer = L.tileLayer(xyzUrl, {
                 minZoom: 0,
                 maxZoom: 18,
                 maxNativeZoom: maxNative,
@@ -301,17 +416,20 @@
         }
 
         function showIntegrationLinks() {
-            var style = currentStyle || 'light';
+            var style = currentStyle || (isMbtilesDataset(targetLayer) ? 'osm_liberty' : 'light');
+            var tsStyleKey = getActiveTileServerStyleKey();
             var host = window.location.protocol + "//" + window.location.host;
+            var xyzPath = targetLayer
+                ? ("/xyz/" + encodeURIComponent(targetLayer.name) + "/" + encodeURIComponent(style) + "/{z}/{x}/{y}.png")
+                : ("/xyz/" + encodeURIComponent(style) + "/{z}/{x}/{y}.png");
 
-            document.getElementById('xyzLink').innerText =
-                host + "/xyz/" + style + "/{z}/{x}/{y}.png";
+            document.getElementById('xyzLink').innerText = host + xyzPath;
             document.getElementById('wmsCapLink').innerText =
                 host + "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities";
             document.getElementById('wmsLink').innerText =
-                host + "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + style + "&FORMAT=image/png&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256";
+                host + "/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=" + encodeURIComponent(tsStyleKey) + "&FORMAT=image/png&SRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256";
             document.getElementById('wmtsLink').innerText =
-                host + "/tileserver/styles/" + style + "/wmts.xml";
+                host + "/tileserver/styles/" + encodeURIComponent(tsStyleKey) + "/wmts.xml";
 
             document.getElementById('integrationModal').style.display = 'block';
         }

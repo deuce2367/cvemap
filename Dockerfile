@@ -47,7 +47,16 @@ RUN chmod +x /app/entrypoint.sh && \
     ln -sfn "Noto Sans Regular" "/app/tileserver/fonts/Open Sans Regular" && \
     ln -sfn "Noto Sans Regular" "/app/tileserver/fonts/Arial Unicode MS Regular" && \
     ln -sfn "Noto Sans Italic" "/app/tileserver/fonts/Open Sans Italic" && \
-    ln -sfn "Noto Sans Medium" "/app/tileserver/fonts/Open Sans Bold"
+    ln -sfn "Noto Sans Medium" "/app/tileserver/fonts/Open Sans Bold" && \
+    for d in /app/static/vendor/font-glyphs/glyphs/*; do \
+      [ -d "$d" ] || continue; \
+      bn="$(basename "$d")"; \
+      [ -e "/app/tileserver/fonts/$bn" ] || ln -s "$d" "/app/tileserver/fonts/$bn"; \
+    done && \
+    ln -sfn "/app/static/vendor/carto-light/sprites" "/app/tileserver/sprites/carto-light" && \
+    ln -sfn "/app/static/vendor/carto-dark/sprites" "/app/tileserver/sprites/carto-dark" && \
+    ln -sfn "/app/static/vendor/carto-color/sprites" "/app/tileserver/sprites/carto-color" && \
+    ln -sfn "/app/static/vendor/osm-liberty/sprites" "/app/tileserver/sprites/osm-liberty"
 
 USER 1000:1000
 EXPOSE 8000 8080

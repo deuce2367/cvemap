@@ -73,11 +73,11 @@ Both targets run **FastAPI + Xvfb + TileServer-GL** in a single container:
 
 | Service / Endpoint | URL | Description |
 | :--- | :--- | :--- |
-| **Raster Viewer** | `http://localhost:8000/` | Leaflet viewer serving all 13 offline Protomaps basemaps over both **XYZ** and **OGC WMS** |
+| **Raster Viewer** | `http://localhost:8000/` | Leaflet viewer serving all discovered `.pmtiles` and `.mbtiles` datasets across offline Protomaps & OpenMapTiles basemaps over **XYZ** and **OGC WMS** |
 | **Vector Viewer** | `http://localhost:8000/modern` | Hardware-accelerated MapLibre GL JS viewer rendering native PMTiles & MVT vector tiles |
-| **WMS Endpoint** | `http://localhost:8000/wms` | OGC WMS `1.1.1` & `1.3.0` (`GetCapabilities` & `GetMap` in `EPSG:3857` & `EPSG:4326`) for QGIS, ArcGIS, Leaflet, OpenLayers |
-| **XYZ Endpoint** | `http://localhost:8000/xyz/{style}/{z}/{x}/{y}.png` | Standard slippy raster PNG tiles (`light`, `dark`, `bio`, `seafoam`, `sol`, etc.) |
-| **WMTS Endpoint** | `http://localhost:8000/tileserver/styles/{style}/wmts.xml` | OGC WMTS capabilities for each Protomaps basemap style |
+| **WMS Endpoint** | `http://localhost:8000/wms` | OGC WMS `1.1.1` & `1.3.0` (`GetCapabilities` & `GetMap` in `EPSG:3857` & `EPSG:4326`, supporting `LAYERS={style}` or `LAYERS={dataset}__{style}`) |
+| **XYZ Endpoint** | `http://localhost:8000/xyz/{dataset}/{style}/{z}/{x}/{y}.png` | Standard slippy raster PNG tiles for any dataset & style (also `/xyz/{style}/{z}/{x}/{y}.png` for the primary dataset) |
+| **WMTS Endpoint** | `http://localhost:8000/tileserver/styles/{dataset}__{style}/wmts.xml` | OGC WMTS capabilities for each dataset & basemap style (also `/tileserver/styles/{style}/wmts.xml`) |
 | **TileServer-GL Direct** | `http://localhost:8080/` | Direct TileServer-GL dashboard & endpoints (also proxied on `:8000/tileserver/`) |
 
 ---

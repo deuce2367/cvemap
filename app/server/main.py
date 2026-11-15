@@ -15,10 +15,13 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image
 
 from server.tileserver_sync import (
+    OPENMAPTILES_STYLE_DEFS,
+    OPENMAPTILES_STYLES,
     TILESERVER_STYLES,
     discover_vector_datasets,
     format_style_title,
     inspect_pmtiles,
+    sanitize_tileserver_id,
     select_primary_pmtiles,
     sync_tileserver_runtime,
 )
@@ -88,22 +91,56 @@ def api_get_maps() -> JSONResponse:
         primary_dataset = next((d for d in datasets if d["path"] == rel_primary), None)
         if primary_dataset is None:
             pm_info = inspect_pmtiles(primary_path)
+            base_name = os.path.splitext(os.path.basename(primary_path))[0]
             primary_dataset = {
-                "name": os.path.splitext(os.path.basename(primary_path))[0],
+                "name": base_name,
+                "ts_key": sanitize_tileserver_id(base_name),
                 "path": rel_primary,
                 "minZoom": pm_info["minZoom"],
                 "maxZoom": pm_info["maxZoom"],
                 "bounds": pm_info.get("bounds"),
                 "pmap_prefix": pm_info["pmap_prefix"],
             }
+    if primary_dataset is None and datasets:
+        primary_dataset = datasets[0]
 
     return JSONResponse(
         content={
             "datasets": datasets,
             "primary_dataset": primary_dataset,
             "tileserver_styles": TILESERVER_STYLES,
+            "openmaptiles_styles": [
+                {"id": st_id, "title": meta["title"]}
+                for st_id, meta in OPENMAPTILES_STYLE_DEFS.items()
+            ],
         }
     )
+
+
+def _resolve_tileserver_style(style: str, dataset: str | None = None) -> str:
+    datasets = discover_vector_datasets(DATA_DIR)
+    if not dataset and "__" in style:
+        dataset, style = style.split("__", 1)
+
+    if dataset:
+        ds = next(
+            (d for d in datasets if d["name"] == dataset or d.get("ts_key") == dataset),
+            None,
+        )
+        if ds:
+            if ds.get("is_mbtiles"):
+                st = style if style in OPENMAPTILES_STYLES else "osm_liberty"
+            else:
+                st = style if style in TILESERVER_STYLES else "light"
+            return f"{ds['ts_key']}__{st}"
+
+    if style in OPENMAPTILES_STYLES and any(d.get("is_mbtiles") for d in datasets):
+        return style
+    if style in TILESERVER_STYLES and any(d.get("is_pmtiles") for d in datasets):
+        return style
+    if datasets and datasets[0].get("is_mbtiles"):
+        return style if style in OPENMAPTILES_STYLES else "osm_liberty"
+    return style if style in TILESERVER_STYLES else "light"
 
 
 def proxy_internal_url(url: str) -> Response:
@@ -126,10 +163,17 @@ def tileserver_proxy(path: str, request: Request) -> Response:
 
 
 @app.get("/xyz/{style}/{z}/{x}/{y}.png")
-def xyz_style_endpoint(style: str, z: int, x: int, y: int) -> Response:
-    style_id = style if style in TILESERVER_STYLES else "light"
+def xyz_style_endpoint(style: str, z: int, x: int, y: int, dataset: str | None = None) -> Response:
+    ts_style = _resolve_tileserver_style(style, dataset=dataset)
     num_tiles = max(1, 1 << z)
-    return proxy_internal_url(f"{TILESERVER_INTERNAL_URL}/styles/{style_id}/{z}/{x % num_tiles}/{y}.png")
+    return proxy_internal_url(f"{TILESERVER_INTERNAL_URL}/styles/{ts_style}/{z}/{x % num_tiles}/{y}.png")
+
+
+@app.get("/xyz/{dataset}/{style}/{z}/{x}/{y}.png")
+def xyz_dataset_style_endpoint(dataset: str, style: str, z: int, x: int, y: int) -> Response:
+    ts_style = _resolve_tileserver_style(style, dataset=dataset)
+    num_tiles = max(1, 1 << z)
+    return proxy_internal_url(f"{TILESERVER_INTERNAL_URL}/styles/{ts_style}/{z}/{x % num_tiles}/{y}.png")
 
 
 # ==============================================================================
@@ -332,28 +376,91 @@ def _render_wms_getmap(
     return Response(content=buf.getvalue(), media_type=media_type)
 
 
+def _dataset_bbox_3857(bounds: list[float] | None) -> tuple[float, float, float, float, float, float, float, float]:
+    if bounds and len(bounds) == 4 and bounds[0] < bounds[2] and bounds[1] < bounds[3]:
+        w, s, e, n = (
+            max(-180.0, min(180.0, float(bounds[0]))),
+            max(-MAX_MERCATOR_LAT, min(MAX_MERCATOR_LAT, float(bounds[1]))),
+            max(-180.0, min(180.0, float(bounds[2]))),
+            max(-MAX_MERCATOR_LAT, min(MAX_MERCATOR_LAT, float(bounds[3]))),
+        )
+        return (
+            w,
+            s,
+            e,
+            n,
+            _lon_to_mercator_x(w),
+            _lat_to_mercator_y(s),
+            _lon_to_mercator_x(e),
+            _lat_to_mercator_y(n),
+        )
+    return (
+        -180.0,
+        -MAX_MERCATOR_LAT,
+        180.0,
+        MAX_MERCATOR_LAT,
+        -ORIGIN_SHIFT,
+        -ORIGIN_SHIFT,
+        ORIGIN_SHIFT,
+        ORIGIN_SHIFT,
+    )
+
+
+def _collect_wms_layer_entries() -> list[tuple[str, str, list[float] | None]]:
+    datasets = discover_vector_datasets(DATA_DIR)
+    entries: list[tuple[str, str, list[float] | None]] = []
+    sorted_pm = sorted(TILESERVER_STYLES, key=lambda s: format_style_title(s))
+    sorted_omt = sorted(OPENMAPTILES_STYLES, key=lambda s: format_style_title(s))
+
+    # Default top-level convenience style names
+    if any(d.get("is_pmtiles") for d in datasets) or not datasets:
+        primary_pm = next((d for d in datasets if d.get("is_pmtiles")), None)
+        b_pm = primary_pm.get("bounds") if primary_pm else None
+        for st in sorted_pm:
+            entries.append((st, format_style_title(st), b_pm))
+    elif any(d.get("is_mbtiles") for d in datasets):
+        primary_mb = next((d for d in datasets if d.get("is_mbtiles")), None)
+        b_mb = primary_mb.get("bounds") if primary_mb else None
+        for st in sorted_omt:
+            entries.append((st, format_style_title(st), b_mb))
+
+    # Per-dataset explicit layer names (<ts_key>__<style>)
+    for ds in datasets:
+        ts_key = ds["ts_key"]
+        ds_name = ds["name"]
+        ds_bounds = ds.get("bounds")
+        style_list = sorted_omt if ds.get("is_mbtiles") else sorted_pm
+        for st in style_list:
+            entries.append((f"{ts_key}__{st}", f"{ds_name} - {format_style_title(st)}", ds_bounds))
+
+    return entries
+
+
 def _render_wms_capabilities(request: Request, version: str) -> Response:
     base_url = xml_escape(str(request.url).split("?")[0])
-    sorted_styles = sorted(TILESERVER_STYLES, key=lambda s: format_style_title(s))
+    layer_entries = _collect_wms_layer_entries()
 
     if version.startswith("1.3"):
-        layers_xml = "\n".join(
-            f"""      <Layer queryable="0">
-        <Name>{xml_escape(st)}</Name>
-        <Title>{xml_escape(format_style_title(st))}</Title>
+        layer_blocks = []
+        for lyr_name, lyr_title, lyr_bounds in layer_entries:
+            w, s, e, n, mx0, my0, mx1, my1 = _dataset_bbox_3857(lyr_bounds)
+            layer_blocks.append(
+                f"""      <Layer queryable="0">
+        <Name>{xml_escape(lyr_name)}</Name>
+        <Title>{xml_escape(lyr_title)}</Title>
         <CRS>EPSG:3857</CRS>
         <CRS>EPSG:4326</CRS>
         <CRS>CRS:84</CRS>
         <EX_GeographicBoundingBox>
-          <westBoundLongitude>-180</westBoundLongitude>
-          <eastBoundLongitude>180</eastBoundLongitude>
-          <southBoundLatitude>-85.051129</southBoundLatitude>
-          <northBoundLatitude>85.051129</northBoundLatitude>
+          <westBoundLongitude>{w:.6f}</westBoundLongitude>
+          <eastBoundLongitude>{e:.6f}</eastBoundLongitude>
+          <southBoundLatitude>{s:.6f}</southBoundLatitude>
+          <northBoundLatitude>{n:.6f}</northBoundLatitude>
         </EX_GeographicBoundingBox>
-        <BoundingBox CRS="EPSG:3857" minx="-20037508.34" miny="-20037508.34" maxx="20037508.34" maxy="20037508.34"/>
+        <BoundingBox CRS="EPSG:3857" minx="{mx0:.2f}" miny="{my0:.2f}" maxx="{mx1:.2f}" maxy="{my1:.2f}"/>
       </Layer>"""
-            for st in sorted_styles
-        )
+            )
+        layers_xml = "\n".join(layer_blocks)
         xml_body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <WMS_Capabilities version="1.3.0" xmlns="http://www.opengis.net/wms" xmlns:xlink="http://www.w3.org/1999/xlink">
   <Service>
@@ -385,17 +492,20 @@ def _render_wms_capabilities(request: Request, version: str) -> Response:
 </WMS_Capabilities>"""
         return Response(content=xml_body, media_type="text/xml")
 
-    layers_xml = "\n".join(
-        f"""      <Layer queryable="0">
-        <Name>{xml_escape(st)}</Name>
-        <Title>{xml_escape(format_style_title(st))}</Title>
+    layer_blocks_111 = []
+    for lyr_name, lyr_title, lyr_bounds in layer_entries:
+        w, s, e, n, mx0, my0, mx1, my1 = _dataset_bbox_3857(lyr_bounds)
+        layer_blocks_111.append(
+            f"""      <Layer queryable="0">
+        <Name>{xml_escape(lyr_name)}</Name>
+        <Title>{xml_escape(lyr_title)}</Title>
         <SRS>EPSG:3857</SRS>
         <SRS>EPSG:4326</SRS>
-        <LatLonBoundingBox minx="-180" miny="-85.051129" maxx="180" maxy="85.051129"/>
-        <BoundingBox SRS="EPSG:3857" minx="-20037508.34" miny="-20037508.34" maxx="20037508.34" maxy="20037508.34"/>
+        <LatLonBoundingBox minx="{w:.6f}" miny="{s:.6f}" maxx="{e:.6f}" maxy="{n:.6f}"/>
+        <BoundingBox SRS="EPSG:3857" minx="{mx0:.2f}" miny="{my0:.2f}" maxx="{mx1:.2f}" maxy="{my1:.2f}"/>
       </Layer>"""
-        for st in sorted_styles
-    )
+        )
+    layers_xml = "\n".join(layer_blocks_111)
     xml_body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE WMT_MS_Capabilities SYSTEM "http://schemas.opengis.net/wms/1.1.1/WMS_MS_Capabilities.dtd">
 <WMT_MS_Capabilities version="1.1.1">
@@ -440,9 +550,11 @@ def _handle_wms_request(request: Request) -> Response:
     if req_type != "GETMAP":
         raise HTTPException(status_code=400, detail=f"Unsupported WMS REQUEST: {req_type}")
 
+    dataset_param = params.get("DATASET", "").strip() or None
     layers_raw = params.get("LAYERS", "light").strip()
     requested = [s.strip() for s in layers_raw.split(",") if s.strip()]
-    style = next((s for s in reversed(requested) if s in TILESERVER_STYLES), "light")
+    chosen_layer = requested[-1] if requested else "light"
+    style = _resolve_tileserver_style(chosen_layer, dataset=dataset_param)
 
     srs = params.get("CRS") or params.get("SRS") or "EPSG:3857"
     bbox_raw = params.get("BBOX", "")

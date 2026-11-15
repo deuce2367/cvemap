@@ -9,14 +9,19 @@
     <script src="/static/vendor/maplibre-gl.js?v=2"></script>
     <script src="/static/vendor/pmtiles.js?v=2"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         #minimap { position: absolute; bottom: 20px; right: 20px; width: 200px; height: 200px; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.4); z-index: 1000; border-radius: 50%; overflow: hidden; pointer-events: none; }
         #coords { position: absolute; bottom: 10px; left: 10px; z-index: 1000; background: rgba(255,255,255,0.85); padding: 5px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        #overlay { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 240px; width: 240px; box-sizing: border-box; font-family: sans-serif; }
-        select { margin-top: 5px; padding: 5px; width: 100%; font-size: 13px; margin-bottom: 10px; }
-        .btn { display: inline-block; margin-top: 6px; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
-        .btn:hover { background: #e0e0e0; }
+        .control-panel { position: absolute; top: 10px; left: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); max-width: 240px; width: 240px; box-sizing: border-box; font-family: sans-serif; }
+        .control-panel .logo-wrap { text-align: center; margin: 0 0 6px 0; line-height: 0; }
+        .control-panel .logo-wrap img { width: 160px; max-width: 160px; border-radius: 8px; display: inline-block; }
+        .control-panel h3 { margin: 0 0 4px 0; font-size: 18px; line-height: 22px; text-align: center; }
+        .control-panel .subtitle { margin: 0 0 10px 0; font-size: 12px; line-height: 16px; color: #555; text-align: center; white-space: nowrap; }
+        .control-panel label { display: block; margin: 0; font-size: 12px; line-height: 15px; font-weight: bold; color: #222; }
+        .control-panel select { display: block; margin: 4px 0 10px 0; padding: 5px; width: 100%; height: 30px; font-size: 13px; box-sizing: border-box; }
+        .control-panel .btn { display: block; margin: 4px 0 0 0; padding: 6px 10px; height: 30px; line-height: 16px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box; }
+        .control-panel .btn:hover { background: #e0e0e0; }
         #error-log { position: absolute; bottom: 40px; left: 10px; z-index: 2000; background: rgba(200,0,0,0.9); color: white; padding: 10px; border-radius: 4px; display: none; font-family: monospace; font-size: 12px; max-width: 70%; max-height: 180px; overflow: auto; white-space: pre-wrap; }
         #fallback-banner { position: absolute; top: 10px; left: 265px; right: 60px; z-index: 1500; background: rgba(255, 248, 225, 0.96); color: #5d4037; border: 1px solid #ffb74d; border-radius: 6px; padding: 8px 32px 8px 12px; font-size: 12px; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: none; }
         #fallback-banner .dismiss { position: absolute; top: 6px; right: 10px; cursor: pointer; font-weight: bold; font-size: 16px; color: #8d6e63; }
@@ -41,24 +46,33 @@
       </div>
     </div>
 
-    <div id="overlay">
-        <div style="text-align: center; margin-bottom: 5px;">
-            <img src="/static/sisyphus_logo.jpg" style="max-width: 160px; border-radius: 8px;">
+    <div id="overlay" class="control-panel">
+        <div class="logo-wrap">
+            <img src="/static/sisyphus_logo.jpg" alt="CVEMAP Logo">
         </div>
-        <h3 style="margin-top: 0; text-align: center;">Vector Viewer</h3>
-        <p style="font-size: 13px; color: #555;">Native MVT via WebGL</p>
+        <h3>Vector Viewer</h3>
+        <p class="subtitle">Native MVT via WebGL</p>
 
-        <label for="viewer-select" style="font-size: 12px; font-weight: bold;">Viewer:</label>
+        <label for="viewer-select">Viewer:</label>
         <select id="viewer-select" onchange="onViewerChange(this.value)">
             <option value="raster">Raster</option>
             <option value="vector" selected>Vector</option>
         </select>
 
-        <label for="layer-select" style="font-size: 12px; font-weight: bold;">Map Dataset:</label>
-        <select id="layer-select" onchange="changeLayer(this.value)"></select>
+        <label for="layer-select">Map Dataset:</label>
+        <select id="layer-select" onchange="changeLayer(this.value)">
+            <option value="">Loading datasets...</option>
+        </select>
 
-        <label for="style-select" style="font-size: 12px; font-weight: bold;">Basemap:</label>
-        <select id="style-select" onchange="changeStyle(this.value)"></select>
+        <label for="style-select">Basemap:</label>
+        <select id="style-select" onchange="changeStyle(this.value)">
+            <option value="">Loading basemaps...</option>
+        </select>
+
+        <label for="format-select">Tile Protocol:</label>
+        <select id="format-select">
+            <option value="webgl" selected>WebGL (MVT / PMTiles)</option>
+        </select>
 
         <button class="btn" onclick="showIntegration()">🔗 Integration Links</button>
     </div>
@@ -149,6 +163,18 @@
             }
         }
 
+        function themeIdToStyleUrl(themeId, isPm) {
+            if (!themeId) return "";
+            if (isPm) {
+                return '/static/vendor/protomaps-themes/' + themeId + '.json';
+            }
+            if (themeId === 'dark_matter') return '/static/vendor/carto-dark/style.json';
+            if (themeId === 'osm_bright') return '/static/vendor/carto-color/style.json';
+            if (themeId === 'osm_liberty') return '/static/vendor/osm-liberty/style.json';
+            if (themeId === 'positron') return '/static/vendor/carto-light/style.json';
+            return "";
+        }
+
         function setupDropdowns() {
             var layerSelect = document.getElementById('layer-select');
             layerSelect.innerHTML = "";
@@ -162,8 +188,8 @@
 
             var select = document.getElementById('style-select');
             var prevValue = select.value;
-            if (!prevValue && requestedTheme && isPmtiles) {
-                prevValue = '/static/vendor/protomaps-themes/' + requestedTheme + '.json';
+            if ((!prevValue || prevValue === '') && requestedTheme) {
+                prevValue = themeIdToStyleUrl(requestedTheme, isPmtiles);
             }
             var html = "";
 
@@ -234,13 +260,22 @@
         }
 
         function styleUrlToTileServerTheme(styleUrl) {
-            if (!styleUrl) return 'light';
+            if (!styleUrl) return isPmtiles ? 'light' : 'osm_liberty';
             if (styleUrl.includes('/protomaps-themes/')) {
                 return styleUrl.split('/').pop().replace('.json', '');
             }
-            if (styleUrl.includes('carto-dark')) return 'dark';
-            if (styleUrl.includes('carto-color')) return 'sol';
-            return 'light';
+            if (styleUrl.includes('carto-dark')) return 'dark_matter';
+            if (styleUrl.includes('carto-color')) return 'osm_bright';
+            if (styleUrl.includes('osm-liberty')) return 'osm_liberty';
+            if (styleUrl.includes('carto-light')) return 'positron';
+            return isPmtiles ? 'light' : 'osm_liberty';
+        }
+
+        function buildFallbackTileUrl(theme) {
+            if (layerName) {
+                return '/xyz/' + encodeURIComponent(layerName) + '/' + encodeURIComponent(theme) + '/{z}/{x}/{y}.png';
+            }
+            return '/xyz/' + encodeURIComponent(theme) + '/{z}/{x}/{y}.png';
         }
 
         window.onViewerChange = function(mode) {
@@ -261,7 +296,11 @@
                     var hv = parseHashView();
                     if (hv) { z = Math.round(hv.zoom); lat = hv.lat; lng = hv.lng; }
                 }
-                window.location.href = '/?style=' + encodeURIComponent(theme) + '#' + z + '/' + lat.toFixed(4) + '/' + lng.toFixed(4);
+                var params = new URLSearchParams();
+                if (layerName) params.set('layer', layerName);
+                if (theme) params.set('style', theme);
+                var qs = params.toString();
+                window.location.href = '/' + (qs ? '?' + qs : '') + '#' + z + '/' + lat.toFixed(4) + '/' + lng.toFixed(4);
             }
         };
 
@@ -334,7 +373,7 @@
                 destroyAllMaps();
                 var hv = parseHashView() || { zoom: 4, lat: 0, lng: 0 };
                 var theme = styleUrlToTileServerTheme(styleUrl);
-                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=3';
+                var tileUrl = buildFallbackTileUrl(theme);
 
                 fallbackMap = L.map('map', {
                     zoomControl: false,
@@ -565,8 +604,9 @@
         window.changeStyle = function(styleUrl) {
             var theme = styleUrlToTileServerTheme(styleUrl);
             requestedTheme = theme;
+            var defaultTheme = isPmtiles ? 'light' : 'osm_liberty';
             var params = new URLSearchParams(window.location.search);
-            if (theme && theme !== 'light') {
+            if (theme && theme !== defaultTheme) {
                 params.set('style', theme);
             } else {
                 params.delete('style');
@@ -575,7 +615,7 @@
             window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
 
             if (usingFallback && fallbackMap) {
-                var tileUrl = '/tileserver/styles/' + theme + '/{z}/{x}/{y}.png?v=3';
+                var tileUrl = buildFallbackTileUrl(theme);
                 if (fallbackTileLayer) fallbackTileLayer.setUrl(tileUrl);
                 if (fallbackMiniLayer) fallbackMiniLayer.setUrl(tileUrl);
                 return;
@@ -589,14 +629,26 @@
 
         window.changeLayer = function(newLayerName) {
             layerName = newLayerName;
+            setupState();
+            setupDropdowns();
+            var activeTheme = styleUrlToTileServerTheme(document.getElementById('style-select').value);
+            requestedTheme = activeTheme;
+            var defaultTheme = isPmtiles ? 'light' : 'osm_liberty';
             var params = new URLSearchParams(window.location.search);
-            params.set('layer', layerName);
+            if (datasets.length > 0 && layerName !== datasets[0].name) {
+                params.set('layer', layerName);
+            } else {
+                params.delete('layer');
+            }
+            if (activeTheme && activeTheme !== defaultTheme) {
+                params.set('style', activeTheme);
+            } else {
+                params.delete('style');
+            }
             var qs = params.toString();
             var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
             window.history.pushState({path: newurl}, '', newurl);
 
-            setupState();
-            setupDropdowns();
             initMap();
         };
 
