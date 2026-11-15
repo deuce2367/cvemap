@@ -1,42 +1,49 @@
 {
   "version": 8,
-  "name": "Dark Matter",
+  "name": "Fiord Color",
   "metadata": {
     "mapbox:autocomposite": false,
     "mapbox:groups": {
       "101da9f13b64a08fa4b6ac1168e89e5f": {
-        "collapsed": false,
+        "collapsed": true,
         "name": "Places"
       },
       "a14c9607bc7954ba1df7205bf660433f": {
+        "collapsed": true,
         "name": "Boundaries"
       },
       "b6371a3f2f5a9932464fa3867530a2e5": {
-        "collapsed": false,
+        "collapsed": true,
         "name": "Transportation"
       }
     },
     "mapbox:type": "template",
-    "openmaptiles:mapbox:owner": "openmaptiles",
-    "openmaptiles:mapbox:source:url": "mapbox://openmaptiles.4qljc88t",
     "openmaptiles:version": "3.x"
   },
+  "center": [
+    0.41134944662525186,
+    -1.7053025658242404e-13
+  ],
+  "zoom": 1.3869401319571246,
+  "bearing": 0,
+  "pitch": 0,
   "sources": {
     "openmaptiles": {
       "type": "vector",
       "tiles": [
         "/mvt/planet/{z}/{x}/{y}.pbf"
-      ]
+      ],
+      "maxzoom": 14
     }
   },
-  "sprite": "/static/vendor/carto-dark/sprites/sprite",
+  "sprite": "/static/vendor/fiord-color/sprites/sprite",
   "glyphs": "/static/vendor/font-glyphs/glyphs/{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "rgb(12,12,12)"
+        "background-color": "#45516E"
       }
     },
     {
@@ -45,24 +52,16 @@
       "source": "openmaptiles",
       "source-layer": "water",
       "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "Polygon"
-        ],
-        [
-          "!=",
-          "brunnel",
-          "tunnel"
-        ]
+        "==",
+        "$type",
+        "Polygon"
       ],
       "layout": {
         "visibility": "visible"
       },
       "paint": {
         "fill-antialias": false,
-        "fill-color": "rgb(27 ,27 ,29)"
+        "fill-color": "#38435C"
       }
     },
     {
@@ -88,16 +87,16 @@
         "visibility": "visible"
       },
       "paint": {
-        "fill-color": "rgb(12,12,12)",
-        "fill-opacity": 0.7
+        "fill-color": "hsl(232, 33%, 34%)",
+        "fill-opacity": 0.4
       }
     },
     {
-      "id": "landcover_glacier",
+      "id": "landuse_residential",
       "type": "fill",
       "source": "openmaptiles",
-      "source-layer": "landcover",
-      "maxzoom": 8,
+      "source-layer": "landuse",
+      "maxzoom": 16,
       "filter": [
         "all",
         [
@@ -108,45 +107,6 @@
         [
           "==",
           "subclass",
-          "glacier"
-        ]
-      ],
-      "layout": {
-        "visibility": "visible"
-      },
-      "paint": {
-        "fill-color": "hsl(0, 1%, 2%)",
-        "fill-opacity": {
-          "base": 1,
-          "stops": [
-            [
-              0,
-              1
-            ],
-            [
-              8,
-              0.5
-            ]
-          ]
-        }
-      }
-    },
-    {
-      "id": "landuse_residential",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "landuse",
-      "maxzoom": 9,
-      "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "Polygon"
-        ],
-        [
-          "==",
-          "class",
           "residential"
         ]
       ],
@@ -154,8 +114,20 @@
         "visibility": "visible"
       },
       "paint": {
-        "fill-color": "hsl(0, 2%, 5%)",
-        "fill-opacity": 0.4
+        "fill-color": "rgb(234, 234, 230)",
+        "fill-opacity": {
+          "base": 0.6,
+          "stops": [
+            [
+              8,
+              0.8
+            ],
+            [
+              9,
+              0.6
+            ]
+          ]
+        }
       }
     },
     {
@@ -181,54 +153,57 @@
         "visibility": "visible"
       },
       "paint": {
-        "fill-color": "rgb(32,32,32)",
+        "fill-color": "hsla(232, 18%, 30%, 0.57)",
         "fill-opacity": {
-          "base": 0.3,
+          "base": 1,
           "stops": [
             [
-              8,
+              9,
               0
             ],
             [
-              10,
-              0.8
-            ],
-            [
-              13,
-              0.4
+              12,
+              1
             ]
           ]
-        },
-        "fill-pattern": "wood-pattern",
-        "fill-translate": [
-          0,
-          0
-        ]
+        }
       }
     },
     {
-      "id": "landuse_park",
+      "id": "park",
       "type": "fill",
       "source": "openmaptiles",
-      "source-layer": "landuse",
+      "source-layer": "park",
       "filter": [
-        "all",
-        [
-          "==",
-          "$type",
-          "Polygon"
-        ],
-        [
-          "==",
-          "class",
-          "park"
-        ]
+        "==",
+        "$type",
+        "Polygon"
       ],
       "layout": {
         "visibility": "visible"
       },
       "paint": {
-        "fill-color": "rgb(32,32,32)"
+        "fill-color": "hsl(204, 17%, 35%)",
+        "fill-opacity": 0.3
+      }
+    },
+    {
+      "id": "park_outline",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "park",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
+      "layout": {},
+      "paint": {
+        "line-color": "hsl(205, 49%, 31%)",
+        "line-dasharray": [
+          2,
+          2
+        ]
       }
     },
     {
@@ -245,32 +220,8 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(27 ,27 ,29)"
-      }
-    },
-    {
-      "id": "water_name",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "water_name",
-      "filter": [
-        "==",
-        "$type",
-        "LineString"
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-spacing": 500,
-        "text-field": "{name:latin}\n{name:nonlatin}",
-        "text-font": [
-          "Open Sans Italic"
-        ],
-        "text-rotation-alignment": "map",
-        "text-size": 12
-      },
-      "paint": {
-        "text-color": "hsla(0, 0%, 0%, 0.7)",
-        "text-halo-color": "hsl(0, 0%, 27%)"
+        "line-color": "hsl(232, 23%, 28%)",
+        "line-opacity": 0.6
       }
     },
     {
@@ -285,9 +236,122 @@
         "Polygon"
       ],
       "paint": {
-        "fill-antialias": true,
-        "fill-color": "rgb(10,10,10)",
-        "fill-outline-color": "rgb(27 ,27 ,29)"
+        "fill-antialias": false,
+        "fill-color": "hsla(232, 47%, 18%, 0.65)",
+        "fill-opacity": 0.25
+      }
+    },
+    {
+      "id": "tunnel_motorway_casing",
+      "type": "line",
+      "metadata": {
+        "mapbox:group": "b6371a3f2f5a9932464fa3867530a2e5"
+      },
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 6,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
+        [
+          "all",
+          [
+            "==",
+            "brunnel",
+            "tunnel"
+          ],
+          [
+            "==",
+            "class",
+            "motorway"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "miter",
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "#3C4357",
+        "line-opacity": 1,
+        "line-width": {
+          "base": 1.4,
+          "stops": [
+            [
+              5.8,
+              0
+            ],
+            [
+              6,
+              3
+            ],
+            [
+              20,
+              40
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "tunnel_motorway_inner",
+      "type": "line",
+      "metadata": {
+        "mapbox:group": "b6371a3f2f5a9932464fa3867530a2e5"
+      },
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 6,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "LineString"
+        ],
+        [
+          "all",
+          [
+            "==",
+            "brunnel",
+            "tunnel"
+          ],
+          [
+            "==",
+            "class",
+            "motorway"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "hsl(224, 18%, 21%)",
+        "line-width": {
+          "base": 1.4,
+          "stops": [
+            [
+              4,
+              2
+            ],
+            [
+              6,
+              1.3
+            ],
+            [
+              20,
+              30
+            ]
+          ]
+        }
       }
     },
     {
@@ -313,7 +377,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "#181818",
+        "line-color": "hsl(224, 22%, 45%)",
         "line-opacity": 1,
         "line-width": {
           "base": 1.55,
@@ -353,14 +417,14 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgba(60,60,60,0.8)",
+        "line-color": "hsl(224, 22%, 45%)",
         "line-opacity": 1,
         "line-width": {
           "base": 1.5,
           "stops": [
             [
               11,
-              5
+              6
             ],
             [
               17,
@@ -397,7 +461,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "fill-color": "#000",
+        "fill-color": "hsl(224, 20%, 29%)",
         "fill-opacity": 1
       }
     },
@@ -410,6 +474,7 @@
       "source": "openmaptiles",
       "source-layer": "aeroway",
       "minzoom": 11,
+      "maxzoom": 24,
       "filter": [
         "all",
         [
@@ -429,7 +494,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "#000",
+        "line-color": "hsl(224, 20%, 29%)",
         "line-opacity": 1,
         "line-width": {
           "base": 1.5,
@@ -470,7 +535,7 @@
       },
       "paint": {
         "fill-antialias": true,
-        "fill-color": "rgb(12,12,12)"
+        "fill-color": "#45516E"
       }
     },
     {
@@ -497,7 +562,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(12,12,12)",
+        "line-color": "#45516E",
         "line-width": {
           "base": 1.2,
           "stops": [
@@ -540,22 +605,22 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(27 ,27 ,29)",
+        "line-color": "hsl(211, 29%, 38%)",
         "line-dasharray": [
-          1.5,
-          1.5
+          2,
+          2
         ],
-        "line-opacity": 0.9,
+        "line-opacity": 1,
         "line-width": {
           "base": 1.2,
           "stops": [
             [
-              13,
-              1
+              12,
+              0.5
             ],
             [
               20,
-              10
+              4
             ]
           ]
         }
@@ -591,7 +656,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "#181818",
+        "line-color": "hsl(224, 22%, 45%)",
         "line-opacity": 0.9,
         "line-width": {
           "base": 1.55,
@@ -639,7 +704,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgba(60,60,60,0.8)",
+        "line-color": "hsl(224, 22%, 45%)",
         "line-dasharray": [
           12,
           0
@@ -690,7 +755,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "hsl(0, 0%, 7%)",
+        "line-color": "#3C4357",
         "line-width": {
           "base": 1.3,
           "stops": [
@@ -714,7 +779,6 @@
       },
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 6,
       "maxzoom": 11,
       "filter": [
         "all",
@@ -738,19 +802,9 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "#2a2a2a",
-        "line-width": {
-          "stops": [
-            [
-              6,
-              0
-            ],
-            [
-              8,
-              2
-            ]
-          ]
-        }
+        "line-color": "#3D4355",
+        "line-opacity": 0.6,
+        "line-width": 2
       }
     },
     {
@@ -770,9 +824,18 @@
           "LineString"
         ],
         [
-          "==",
-          "class",
-          "motorway"
+          "all",
+          [
+            "!in",
+            "brunnel",
+            "bridge",
+            "tunnel"
+          ],
+          [
+            "==",
+            "class",
+            "motorway"
+          ]
         ]
       ],
       "layout": {
@@ -781,7 +844,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgba(60,60,60,0.8)",
+        "line-color": "hsl(224, 22%, 45%)",
         "line-dasharray": [
           2,
           0
@@ -823,9 +886,18 @@
           "LineString"
         ],
         [
-          "==",
-          "class",
-          "motorway"
+          "all",
+          [
+            "!in",
+            "brunnel",
+            "bridge",
+            "tunnel"
+          ],
+          [
+            "==",
+            "class",
+            "motorway"
+          ]
         ]
       ],
       "layout": {
@@ -843,7 +915,7 @@
             ],
             [
               6,
-              "#000"
+              "hsl(224, 20%, 29%)"
             ]
           ]
         },
@@ -864,82 +936,6 @@
             ]
           ]
         }
-      }
-    },
-    {
-      "id": "road_oneway",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "minzoom": 15,
-      "filter": [
-        "all",
-        [
-          "==",
-          "oneway",
-          1
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "icon-image": "oneway",
-        "symbol-spacing": 200,
-        "icon-padding": 2,
-        "icon-rotation-alignment": "map",
-        "icon-rotate": 0,
-        "icon-size": {
-          "stops": [
-            [
-              15,
-              0.5
-            ],
-            [
-              19,
-              1
-            ]
-          ]
-        }
-      },
-      "paint": {
-        "icon-opacity": 0.5
-      }
-    },
-    {
-      "id": "road_oneway_opposite",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "transportation",
-      "minzoom": 15,
-      "filter": [
-        "all",
-        [
-          "==",
-          "oneway",
-          -1
-        ]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "icon-image": "oneway",
-        "symbol-spacing": 200,
-        "icon-padding": 2,
-        "icon-rotation-alignment": "map",
-        "icon-rotate": 180,
-        "icon-size": {
-          "stops": [
-            [
-              15,
-              0.5
-            ],
-            [
-              19,
-              1
-            ]
-          ]
-        }
-      },
-      "paint": {
-        "icon-opacity": 0.5
       }
     },
     {
@@ -970,7 +966,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "#181818",
+        "line-color": "hsla(239, 45%, 69%, 0.2)",
         "line-width": {
           "base": 1.4,
           "stops": [
@@ -1021,7 +1017,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(35,35,35)",
+        "line-color": "hsl(200, 65%, 11%)",
         "line-width": 3
       }
     },
@@ -1060,7 +1056,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(12,12,12)",
+        "line-color": "hsl(193, 63%, 26%)",
         "line-dasharray": [
           3,
           3
@@ -1069,7 +1065,7 @@
       }
     },
     {
-      "id": "railway_minor",
+      "id": "railway_service",
       "type": "line",
       "metadata": {
         "mapbox:group": "b6371a3f2f5a9932464fa3867530a2e5"
@@ -1102,12 +1098,12 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(35,35,35)",
+        "line-color": "hsl(200, 65%, 11%)",
         "line-width": 3
       }
     },
     {
-      "id": "railway_minor_dashline",
+      "id": "railway_service_dashline",
       "type": "line",
       "metadata": {
         "mapbox:group": "b6371a3f2f5a9932464fa3867530a2e5"
@@ -1140,7 +1136,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(12,12,12)",
+        "line-color": "hsl(193, 63%, 26%)",
         "line-dasharray": [
           3,
           3
@@ -1165,13 +1161,16 @@
           "LineString"
         ],
         [
-          "==",
-          "class",
-          "rail"
-        ],
-        [
-          "!has",
-          "service"
+          "all",
+          [
+            "!has",
+            "service"
+          ],
+          [
+            "==",
+            "class",
+            "rail"
+          ]
         ]
       ],
       "layout": {
@@ -1179,7 +1178,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(35,35,35)",
+        "line-color": "hsl(200, 10%, 18%)",
         "line-width": {
           "base": 1.3,
           "stops": [
@@ -1212,13 +1211,16 @@
           "LineString"
         ],
         [
-          "==",
-          "class",
-          "rail"
-        ],
-        [
-          "!has",
-          "service"
+          "all",
+          [
+            "!has",
+            "service"
+          ],
+          [
+            "==",
+            "class",
+            "rail"
+          ]
         ]
       ],
       "layout": {
@@ -1226,7 +1228,7 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "rgb(12,12,12)",
+        "line-color": "hsl(224, 20%, 41%)",
         "line-dasharray": [
           3,
           3
@@ -1236,7 +1238,7 @@
           "stops": [
             [
               16,
-              2
+              1.5
             ],
             [
               20,
@@ -1244,6 +1246,34 @@
             ]
           ]
         }
+      }
+    },
+    {
+      "id": "water_name",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "water_name",
+      "filter": [
+        "==",
+        "$type",
+        "LineString"
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 500,
+        "text-field": "{name:latin}\n{name:nonlatin}",
+        "text-font": [
+          "Open Sans Semi Bold Italic"
+        ],
+        "text-rotation-alignment": "map",
+        "text-size": 12,
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "hsl(223, 21%, 52%)",
+        "text-halo-blur": 0,
+        "text-halo-color": "hsl(232, 5%, 19%)",
+        "text-halo-width": 1
       }
     },
     {
@@ -1282,10 +1312,11 @@
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgba(80, 78, 78, 1)",
+        "text-color": "hsl(223, 31%, 61%)",
         "text-halo-blur": 0,
-        "text-halo-color": "rgba(0, 0, 0, 1)",
-        "text-halo-width": 1,
+        "text-halo-color": "hsl(232, 9%, 23%)",
+        "text-halo-width": 2,
+        "text-opacity": 1,
         "text-translate": [
           0,
           0
@@ -1293,7 +1324,7 @@
       }
     },
     {
-      "id": "highway_name_motorway",
+      "id": "highway_ref",
       "type": "symbol",
       "metadata": {
         "mapbox:group": "b6371a3f2f5a9932464fa3867530a2e5"
@@ -1323,10 +1354,14 @@
         "text-pitch-alignment": "viewport",
         "text-rotation-alignment": "viewport",
         "text-size": 10,
-        "visibility": "visible"
+        "visibility": "none"
       },
       "paint": {
-        "text-color": "hsl(0, 0%, 37%)",
+        "text-color": "hsl(215, 57%, 77%)",
+        "text-halo-blur": 1,
+        "text-halo-color": "hsl(209, 64%, 19%)",
+        "text-halo-width": 1,
+        "text-opacity": 1,
         "text-translate": [
           0,
           2
@@ -1353,7 +1388,7 @@
       },
       "paint": {
         "line-blur": 0.4,
-        "line-color": "hsl(0, 0%, 21%)",
+        "line-color": "hsla(195, 47%, 62%, 0.26)",
         "line-dasharray": [
           2,
           2
@@ -1413,8 +1448,8 @@
             ]
           ]
         },
-        "line-color": "hsl(0, 0%, 23%)",
-        "line-opacity": 1,
+        "line-color": "hsl(214, 63%, 76%)",
+        "line-opacity": 0.56,
         "line-width": {
           "base": 1.1,
           "stops": [
@@ -1462,8 +1497,8 @@
             ]
           ]
         },
-        "line-color": "hsl(0, 0%, 23%)",
-        "line-opacity": 1,
+        "line-color": "hsl(214, 63%, 76%)",
+        "line-opacity": 0.56,
         "line-width": {
           "base": 1.1,
           "stops": [
@@ -1491,16 +1526,16 @@
       "filter": [
         "all",
         [
-          "==",
-          "$type",
-          "Point"
-        ],
-        [
           "in",
           "class",
           "hamlet",
-          "isolated_dwelling",
-          "neighbourhood"
+          "neighbourhood",
+          "isolated_dwelling"
+        ],
+        [
+          "==",
+          "$type",
+          "Point"
         ]
       ],
       "layout": {
@@ -1516,15 +1551,14 @@
         ],
         "text-size": 10,
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(101,101,101)",
+        "text-color": "hsl(195, 37%, 73%)",
         "text-halo-blur": 1,
-        "text-halo-color": "rgba(0,0,0,0.7)",
-        "text-halo-width": 1
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
+        "text-halo-width": 1,
+        "text-opacity": 0.6
       }
     },
     {
@@ -1562,14 +1596,12 @@
         ],
         "text-size": 10,
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(101,101,101)",
+        "text-color": "hsl(195, 41%, 49%)",
         "text-halo-blur": 1,
-        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
         "text-halo-width": 1
       }
     },
@@ -1609,15 +1641,13 @@
         ],
         "text-size": 10,
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
         "icon-opacity": 0.7,
-        "text-color": "rgb(101,101,101)",
+        "text-color": "hsl(195, 41%, 49%)",
         "text-halo-blur": 1,
-        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
         "text-halo-width": 1
       }
     },
@@ -1682,15 +1712,13 @@
         ],
         "text-size": 10,
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
         "icon-opacity": 0.7,
-        "text-color": "rgb(101,101,101)",
+        "text-color": "hsl(195, 25%, 76%)",
         "text-halo-blur": 1,
-        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
         "text-halo-width": 1
       }
     },
@@ -1711,30 +1739,20 @@
           "Point"
         ],
         [
-          "==",
-          "class",
-          "city"
-        ],
-        [
-          ">",
-          "rank",
-          3
+          "all",
+          [
+            "==",
+            "class",
+            "city"
+          ],
+          [
+            ">",
+            "rank",
+            3
+          ]
         ]
       ],
       "layout": {
-        "icon-image": {
-          "base": 1,
-          "stops": [
-            [
-              0,
-              "circle-11"
-            ],
-            [
-              9,
-              ""
-            ]
-          ]
-        },
         "icon-size": 0.4,
         "text-anchor": {
           "base": 1,
@@ -1760,15 +1778,13 @@
         ],
         "text-size": 10,
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
         "icon-opacity": 0.7,
-        "text-color": "rgb(101,101,101)",
+        "text-color": "hsl(195, 25%, 76%)",
         "text-halo-blur": 1,
-        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
         "text-halo-width": 1
       }
     },
@@ -1789,30 +1805,20 @@
           "Point"
         ],
         [
-          "<=",
-          "rank",
-          3
-        ],
-        [
-          "==",
-          "class",
-          "city"
+          "all",
+          [
+            "<=",
+            "rank",
+            3
+          ],
+          [
+            "==",
+            "class",
+            "city"
+          ]
         ]
       ],
       "layout": {
-        "icon-image": {
-          "base": 1,
-          "stops": [
-            [
-              0,
-              "circle-11"
-            ],
-            [
-              9,
-              ""
-            ]
-          ]
-        },
         "icon-size": 0.4,
         "text-anchor": {
           "base": 1,
@@ -1838,15 +1844,13 @@
         ],
         "text-size": 14,
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
         "icon-opacity": 0.7,
-        "text-color": "rgb(101,101,101)",
+        "text-color": "hsl(195, 25%, 76%)",
         "text-halo-blur": 1,
-        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
         "text-halo-width": 1
       }
     },
@@ -1879,14 +1883,12 @@
         ],
         "text-size": 10,
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(101,101,101)",
+        "text-color": "rgb(113, 129, 144)",
         "text-halo-blur": 1,
-        "text-halo-color": "rgba(0,0,0,0.7)",
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
         "text-halo-width": 1
       }
     },
@@ -1919,7 +1921,7 @@
       "layout": {
         "text-field": "{name:latin}",
         "text-font": [
-          "Open Sans Italic"
+          "Open Sans Light Italic"
         ],
         "text-size": {
           "base": 1,
@@ -1929,20 +1931,31 @@
               9
             ],
             [
-              1,
+              6,
               11
             ]
           ]
         },
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(101,101,101)",
-        "text-halo-color": "rgba(0,0,0,0.7)",
-        "text-halo-width": 1.4
+        "text-color": {
+          "base": 1,
+          "stops": [
+            [
+              3,
+              "rgb(157,169,177)"
+            ],
+            [
+              4,
+              "rgb(153, 153, 153)"
+            ]
+          ]
+        },
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
+        "text-halo-width": 1.4,
+        "text-opacity": 1
       }
     },
     {
@@ -1995,14 +2008,25 @@
           ]
         },
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(101,101,101)",
-        "text-halo-color": "rgba(0,0,0,0.7)",
-        "text-halo-width": 1.4
+        "text-color": {
+          "base": 1,
+          "stops": [
+            [
+              3,
+              "rgb(157,169,177)"
+            ],
+            [
+              4,
+              "rgb(153, 153, 153)"
+            ]
+          ]
+        },
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
+        "text-halo-width": 1.4,
+        "text-opacity": 1
       }
     },
     {
@@ -2060,16 +2084,94 @@
           ]
         },
         "text-transform": "uppercase",
-        "visibility": "visible",
-        "symbol-avoid-edges": true,
-        "text-max-width": 7
+        "visibility": "visible"
       },
       "paint": {
-        "text-color": "rgb(101,101,101)",
-        "text-halo-color": "rgba(0,0,0,0.7)",
-        "text-halo-width": 1.4
+        "text-color": {
+          "base": 1,
+          "stops": [
+            [
+              3,
+              "rgb(157,169,177)"
+            ],
+            [
+              4,
+              "rgb(153, 153, 153)"
+            ]
+          ]
+        },
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
+        "text-halo-width": 1.4,
+        "text-opacity": 1
+      }
+    },
+    {
+      "id": "place_continent",
+      "type": "symbol",
+      "metadata": {
+        "mapbox:group": "101da9f13b64a08fa4b6ac1168e89e5f"
+      },
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "maxzoom": 6,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "class",
+          "continent"
+        ]
+      ],
+      "layout": {
+        "text-anchor": "center",
+        "text-field": "{name:latin}",
+        "text-font": [
+          "Open Sans Regular"
+        ],
+        "text-size": {
+          "base": 1.4,
+          "stops": [
+            [
+              0,
+              10
+            ],
+            [
+              3,
+              12
+            ],
+            [
+              4,
+              14
+            ]
+          ]
+        },
+        "text-transform": "uppercase",
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "hsl(0, 0%, 100%)",
+        "text-halo-color": "hsla(228, 60%, 21%, 0.7)",
+        "text-halo-width": 1.4,
+        "text-opacity": {
+          "base": 1,
+          "stops": [
+            [
+              0,
+              0.6
+            ],
+            [
+              3,
+              0
+            ]
+          ]
+        }
       }
     }
   ],
-  "id": "dark-matter"
+  "id": "ciwlw4z7800092qmvzlut41tx"
 }

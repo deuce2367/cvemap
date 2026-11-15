@@ -286,7 +286,9 @@ def _render_wms_getmap(
         min_x = _lon_to_mercator_x(min_lon)
         max_x = _lon_to_mercator_x(max_lon)
         res_x = (max_x - min_x) / float(width)
-        z = int(round(math.log2(WORLD_SPAN / (256.0 * max(res_x, 1e-9)))))
+        res_y_eq = ((max_lat - min_lat) * (ORIGIN_SHIFT / 180.0)) / float(height)
+        target_res = max(min(res_x, res_y_eq), 1e-9)
+        z = int(round(math.log2(WORLD_SPAN / (256.0 * target_res))))
         z = max(0, min(18, z))
         total_px = float(256 * (1 << z))
 
@@ -314,6 +316,7 @@ def _render_wms_getmap(
             ty_max = min((1 << z) - 1, math.floor(max(py_top, py_bottom - 1e-6) / 256.0))
 
         mosaic = _build_tile_mosaic(style, z, tx_min, ty_min, tx_max, ty_max)
+        mosaic_h = float(mosaic.height)
         src_x0 = px_left - tx_min * 256.0
         src_x1 = px_right - tx_min * 256.0
 
@@ -326,8 +329,8 @@ def _render_wms_getmap(
                 continue
             lat0 = max_lat - (y0 / float(height)) * (max_lat - min_lat)
             lat1 = max_lat - (y1 / float(height)) * (max_lat - min_lat)
-            sy0 = _lat_to_global_py(lat0, total_px) - ty_min * 256.0
-            sy1 = _lat_to_global_py(lat1, total_px) - ty_min * 256.0
+            sy0 = max(0.5, min(mosaic_h - 0.5, _lat_to_global_py(lat0, total_px) - ty_min * 256.0))
+            sy1 = max(0.5, min(mosaic_h - 0.5, _lat_to_global_py(lat1, total_px) - ty_min * 256.0))
             mesh.append(((0, y0, width, y1), (src_x0, sy0, src_x0, sy1, src_x1, sy1, src_x1, sy0)))
 
         out_img = mosaic.transform((width, height), Image.Transform.MESH, mesh, Image.Resampling.BILINEAR)
@@ -457,6 +460,8 @@ def _render_wms_capabilities(request: Request, version: str) -> Response:
         layer_blocks = []
         for lyr_name, lyr_title, lyr_bounds in layer_entries:
             w, s, e, n, mx0, my0, mx1, my1 = _dataset_bbox_3857(lyr_bounds)
+            geo_s = -90.0 if s <= -85.0 else s
+            geo_n = 90.0 if n >= 85.0 else n
             layer_blocks.append(
                 f"""      <Layer queryable="0">
         <Name>{xml_escape(lyr_name)}</Name>
@@ -467,10 +472,12 @@ def _render_wms_capabilities(request: Request, version: str) -> Response:
         <EX_GeographicBoundingBox>
           <westBoundLongitude>{w:.6f}</westBoundLongitude>
           <eastBoundLongitude>{e:.6f}</eastBoundLongitude>
-          <southBoundLatitude>{s:.6f}</southBoundLatitude>
-          <northBoundLatitude>{n:.6f}</northBoundLatitude>
+          <southBoundLatitude>{geo_s:.6f}</southBoundLatitude>
+          <northBoundLatitude>{geo_n:.6f}</northBoundLatitude>
         </EX_GeographicBoundingBox>
         <BoundingBox CRS="EPSG:3857" minx="{mx0:.2f}" miny="{my0:.2f}" maxx="{mx1:.2f}" maxy="{my1:.2f}"/>
+        <BoundingBox CRS="EPSG:4326" minx="{geo_s:.6f}" miny="{w:.6f}" maxx="{geo_n:.6f}" maxy="{e:.6f}"/>
+        <BoundingBox CRS="CRS:84" minx="{w:.6f}" miny="{geo_s:.6f}" maxx="{e:.6f}" maxy="{geo_n:.6f}"/>
       </Layer>"""
             )
         layers_xml = "\n".join(layer_blocks)
@@ -508,14 +515,17 @@ def _render_wms_capabilities(request: Request, version: str) -> Response:
     layer_blocks_111 = []
     for lyr_name, lyr_title, lyr_bounds in layer_entries:
         w, s, e, n, mx0, my0, mx1, my1 = _dataset_bbox_3857(lyr_bounds)
+        geo_s = -90.0 if s <= -85.0 else s
+        geo_n = 90.0 if n >= 85.0 else n
         layer_blocks_111.append(
             f"""      <Layer queryable="0">
         <Name>{xml_escape(lyr_name)}</Name>
         <Title>{xml_escape(lyr_title)}</Title>
         <SRS>EPSG:3857</SRS>
         <SRS>EPSG:4326</SRS>
-        <LatLonBoundingBox minx="{w:.6f}" miny="{s:.6f}" maxx="{e:.6f}" maxy="{n:.6f}"/>
+        <LatLonBoundingBox minx="{w:.6f}" miny="{geo_s:.6f}" maxx="{e:.6f}" maxy="{geo_n:.6f}"/>
         <BoundingBox SRS="EPSG:3857" minx="{mx0:.2f}" miny="{my0:.2f}" maxx="{mx1:.2f}" maxy="{my1:.2f}"/>
+        <BoundingBox SRS="EPSG:4326" minx="{w:.6f}" miny="{geo_s:.6f}" maxx="{e:.6f}" maxy="{geo_n:.6f}"/>
       </Layer>"""
         )
     layers_xml = "\n".join(layer_blocks_111)
@@ -544,7 +554,7 @@ def _render_wms_capabilities(request: Request, version: str) -> Response:
       <Title>CVEMAP Basemaps</Title>
       <SRS>EPSG:3857</SRS>
       <SRS>EPSG:4326</SRS>
-      <LatLonBoundingBox minx="-180" miny="-85.051129" maxx="180" maxy="85.051129"/>
+      <LatLonBoundingBox minx="-180" miny="-90" maxx="180" maxy="90"/>
 {layers_xml}
     </Layer>
   </Capability>

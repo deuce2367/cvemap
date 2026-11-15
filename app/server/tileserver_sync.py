@@ -31,11 +31,17 @@ TILESERVER_STYLES = [
 ]
 
 OPENMAPTILES_STYLE_DEFS: dict[str, dict[str, str]] = {
-    "dark_matter": {
-        "title": "Dark Matter (Dark)",
-        "vendor_dir": "carto-dark",
-        "sprite": "carto-dark/sprite",
-        "browser_sprite": "carto-dark/sprites/sprite",
+    "fiord": {
+        "title": "Fiord",
+        "vendor_dir": "fiord-color",
+        "sprite": "fiord-color/sprite",
+        "browser_sprite": "fiord-color/sprites/sprite",
+    },
+    "maptiler_basic": {
+        "title": "MapTiler Basic",
+        "vendor_dir": "maptiler-basic",
+        "sprite": "maptiler-basic/sprite",
+        "browser_sprite": "maptiler-basic/sprites/sprite",
     },
     "osm_bright": {
         "title": "OSM Bright (Colorful)",
@@ -49,11 +55,17 @@ OPENMAPTILES_STYLE_DEFS: dict[str, dict[str, str]] = {
         "sprite": "osm-liberty/osm-liberty",
         "browser_sprite": "osm-liberty/sprites/osm-liberty",
     },
-    "positron": {
-        "title": "Positron (Light)",
-        "vendor_dir": "carto-light",
-        "sprite": "carto-light/sprite",
-        "browser_sprite": "carto-light/sprites/sprite",
+    "osm_openmap": {
+        "title": "OSM OpenMap",
+        "vendor_dir": "osm-openmap",
+        "sprite": "osm-openmap/sprite",
+        "browser_sprite": "osm-openmap/sprites/sprite",
+    },
+    "tron": {
+        "title": "Tron",
+        "vendor_dir": "nextzen-tron",
+        "sprite": "nextzen-tron/sprite",
+        "browser_sprite": "nextzen-tron/sprites/sprite",
     },
 }
 
@@ -418,7 +430,8 @@ def _prepare_runtime_assets(tileserver_template_dir: str, vendor_dir: str, runti
                     except OSError:
                         pass
 
-        for sub in ("carto-light", "carto-dark", "carto-color", "osm-liberty"):
+        for meta in OPENMAPTILES_STYLE_DEFS.values():
+            sub = meta["vendor_dir"]
             src = os.path.abspath(os.path.join(vendor_dir, sub, "sprites"))
             dst = os.path.join(rt_sprites, sub)
             if os.path.isdir(src) and not os.path.lexists(dst):
@@ -469,12 +482,12 @@ def _adapt_protomaps_style_to_openmaptiles(
     if sprite_ref is not None:
         adapted["sprite"] = sprite_ref
 
-    earth_color = "#e6e6e6"
+    earth_color: object = "#e6e6e6"
     for lyr in adapted.get("layers", []):
         if lyr.get("id") == "earth":
             fc = (lyr.get("paint") or {}).get("fill-color")
-            if isinstance(fc, str):
-                earth_color = fc
+            if fc is not None:
+                earth_color = copy.deepcopy(fc)
             break
 
     name_expr = ["coalesce", ["get", "name:en"], ["get", "name:latin"], ["get", "name"]]
@@ -704,22 +717,23 @@ def _adapt_openmaptiles_style_to_protomaps(
     k_minz = "pmap:min_zoom" if pmap_prefix else "min_zoom"
     name_expr = ["coalesce", ["get", "name:en"], ["get", "name"]]
 
-    land_color = "#f2f3f0"
-    water_color = "#a0c8f0"
+    land_color: object = "#f2f3f0"
+    water_color: object = "#a0c8f0"
     has_city_large = any("city_large" in (l.get("id") or "").lower() for l in adapted.get("layers", []))
 
     for lyr in adapted.get("layers", []):
         if lyr.get("type") == "background":
             bgc = (lyr.get("paint") or {}).get("background-color")
-            if isinstance(bgc, str):
-                land_color = bgc
-        elif lyr.get("source-layer") == "water" and lyr.get("type") == "fill":
+            if bgc is not None:
+                land_color = copy.deepcopy(bgc)
+        elif lyr.get("source-layer") == "water" and lyr.get("type") == "fill" and "intermittent" not in (lyr.get("id") or "").lower():
             wc = (lyr.get("paint") or {}).get("fill-color")
-            if isinstance(wc, str):
-                water_color = wc
+            if wc is not None:
+                water_color = copy.deepcopy(wc)
 
     new_layers: list[dict] = []
     inserted_earth = False
+    seen_poi_layer = False
 
     for lyr in adapted.get("layers", []):
         lid_raw = lyr.get("id", "")
@@ -727,11 +741,11 @@ def _adapt_openmaptiles_style_to_protomaps(
         ltype = lyr.get("type", "")
         sl = lyr.get("source-layer")
 
-        if "highway-shield-us-" in lid:
+        if "highway-shield-us-" in lid or sl == "housenumber":
             continue
 
         if ltype == "background":
-            lyr.setdefault("paint", {})["background-color"] = water_color
+            lyr.setdefault("paint", {})["background-color"] = copy.deepcopy(water_color)
             new_layers.append(lyr)
             new_layers.append(
                 {
@@ -740,7 +754,7 @@ def _adapt_openmaptiles_style_to_protomaps(
                     "source": src_name,
                     "source-layer": "earth",
                     "filter": ["==", "$type", "Polygon"],
-                    "paint": {"fill-color": land_color},
+                    "paint": {"fill-color": copy.deepcopy(land_color)},
                 }
             )
             inserted_earth = True
@@ -748,10 +762,16 @@ def _adapt_openmaptiles_style_to_protomaps(
 
         if sl == "water":
             lyr["source-layer"] = "water"
-            lyr["filter"] = ["==", "$type", "Polygon"]
+            if "intermittent" in lid:
+                lyr["filter"] = ["all", ["==", "$type", "Polygon"], ["has", "intermittent"]]
+            else:
+                lyr["filter"] = ["==", "$type", "Polygon"]
         elif sl == "waterway":
             lyr["source-layer"] = "water"
-            if "river" in lid or "canal" in lid:
+            if ltype == "symbol":
+                lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "stream", "river", "canal"]]
+                lyr.setdefault("layout", {})["text-field"] = name_expr
+            elif "river" in lid or "canal" in lid:
                 lyr["filter"] = ["in", k_kind, "river", "canal"]
             else:
                 lyr["filter"] = ["in", k_kind, "stream", "river", "canal", "ditch", "drain"]
@@ -870,9 +890,21 @@ def _adapt_openmaptiles_style_to_protomaps(
             layout = lyr.setdefault("layout", {})
             tf_raw = json.dumps(layout.get("text-field", ""))
             if "shield" in lid or ("motorway" in lid and "ref" in tf_raw):
+                if "tertiary" in lid:
+                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "tertiary"]]
+                elif "secondary" in lid:
+                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "secondary"]]
+                elif "primary" in lid:
+                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "primary"]]
+                elif "trunk" in lid:
+                    road_conds = [["==", ["get", k_kind], "major_road"], ["==", ["get", k_detail], "trunk"]]
+                elif "highway shield" in lid:
+                    road_conds = [["==", ["get", k_kind], "highway"]]
+                else:
+                    road_conds = [["in", ["get", k_kind], ["literal", ["highway", "major_road"]]]]
                 lyr["filter"] = [
                     "all",
-                    ["in", ["get", k_kind], ["literal", ["highway", "major_road"]]],
+                    *road_conds,
                     ["has", "ref"],
                     [">=", ["length", ["to-string", ["get", "ref"]]], 1],
                     ["<=", ["length", ["to-string", ["get", "ref"]]], 6],
@@ -880,8 +912,12 @@ def _adapt_openmaptiles_style_to_protomaps(
                 layout["text-field"] = ["to-string", ["get", "ref"]]
                 if "icon-image" in layout:
                     img_s = str(layout["icon-image"])
-                    prefix = "default_" if "default_" in img_s else "road_"
-                    layout["icon-image"] = ["concat", prefix, ["to-string", ["length", ["to-string", ["get", "ref"]]]]]
+                    if "ref_length" in img_s:
+                        prefix = "default_" if "default_" in img_s else "road_"
+                        layout["icon-image"] = ["concat", prefix, ["to-string", ["length", ["to-string", ["get", "ref"]]]]]
+            elif "ferry" in lid:
+                lyr["filter"] = ["all", ["has", "name"], ["==", k_kind, "ferry"]]
+                layout["text-field"] = name_expr
             elif "major" in lid:
                 lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "highway", "major_road"]]
                 layout["text-field"] = name_expr
@@ -930,7 +966,26 @@ def _adapt_openmaptiles_style_to_protomaps(
                 lyr["filter"] = ["all", ["==", ["get", k_kind], "locality"], ["<", ["coalesce", ["get", k_pop], 0], 5]]
             else:
                 lyr["filter"] = ["in", ["get", k_kind], ["literal", ["neighbourhood", "macrohood", "suburb"]]]
+        elif sl == "aerodrome_label":
+            lyr["source-layer"] = "pois"
+            lyr["filter"] = ["all", ["has", "name"], ["in", k_kind, "aerodrome", "airport"]]
+            layout = lyr.setdefault("layout", {})
+            layout["text-field"] = name_expr
+            if "icon-image" in layout and "{" in str(layout["icon-image"]):
+                del layout["icon-image"]
+        elif sl == "mountain_peak":
+            if "volcano" in lid:
+                continue
+            lyr["source-layer"] = "pois"
+            lyr["filter"] = ["all", ["has", "name"], ["==", k_kind, "peak"]]
+            layout = lyr.setdefault("layout", {})
+            layout["text-field"] = name_expr
+            if "icon-image" in layout and "{" in str(layout["icon-image"]):
+                del layout["icon-image"]
         elif sl == "poi":
+            if seen_poi_layer:
+                continue
+            seen_poi_layer = True
             lyr["source-layer"] = "pois"
             lyr["filter"] = ["all", ["has", "name"], [">=", ["zoom"], ["coalesce", ["get", k_minz], 14]]]
             layout = lyr.setdefault("layout", {})
@@ -949,7 +1004,7 @@ def _adapt_openmaptiles_style_to_protomaps(
                 "source": src_name,
                 "source-layer": "earth",
                 "filter": ["==", "$type", "Polygon"],
-                "paint": {"fill-color": land_color},
+                "paint": {"fill-color": copy.deepcopy(land_color)},
             },
         )
     adapted["layers"] = new_layers

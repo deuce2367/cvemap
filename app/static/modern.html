@@ -82,7 +82,7 @@
     </div>
     <div id="map"></div>
     <div id="minimap"></div>
-    <div id="coords">Lat: 0.0000, Lon: 0.0000</div>
+    <div id="coords">Zoom: 4.0&nbsp;&nbsp;Lat: 0.0000&nbsp;&nbsp;Lon: 0.0000</div>
     <div id="error-log"></div>
     <script>
         function reportError(prefix, err) {
@@ -133,11 +133,13 @@
         var isPmtiles = false;
         var targetLayer = null;
         var datasets = [];
+        var lastPointerLatLng = null;
         var allStyleOptions = [
-            { id: 'dark_matter', title: 'Dark Matter (Dark)' },
+            { id: 'fiord', title: 'Fiord' },
+            { id: 'maptiler_basic', title: 'MapTiler Basic' },
             { id: 'osm_bright', title: 'OSM Bright (Colorful)' },
             { id: 'osm_liberty', title: 'OSM Liberty (Classic OSM)' },
-            { id: 'positron', title: 'Positron (Light)' },
+            { id: 'osm_openmap', title: 'OSM OpenMap' },
             { id: 'bio', title: 'Protomaps Bio' },
             { id: 'black', title: 'Protomaps Black' },
             { id: 'black_and_white', title: 'Protomaps Black & White' },
@@ -150,8 +152,15 @@
             { id: 'rainforest', title: 'Protomaps Rainforest' },
             { id: 'seafoam', title: 'Protomaps Seafoam' },
             { id: 'sol', title: 'Protomaps Sol' },
-            { id: 'white', title: 'Protomaps White' }
+            { id: 'white', title: 'Protomaps White' },
+            { id: 'tron', title: 'Tron' }
         ];
+
+        function renderCoordsDisplay(zoomVal, latVal, lngVal) {
+            var zStr = (typeof zoomVal === 'number' && !isNaN(zoomVal)) ? zoomVal.toFixed(1) : String(zoomVal);
+            document.getElementById('coords').innerHTML =
+                "Zoom: " + zStr + "&nbsp;&nbsp;Lat: " + Number(latVal).toFixed(4) + "&nbsp;&nbsp;Lon: " + Number(lngVal).toFixed(4);
+        }
 
         fetch('/api/maps?' + new Date().getTime())
             .then(function(res) { return res.json(); })
@@ -390,19 +399,22 @@
                 }).addTo(fallbackMinimap);
 
                 fallbackMap.on('mousemove', function(e) {
-                    document.getElementById('coords').innerText =
-                        "Lat: " + e.latlng.lat.toFixed(4) + ", Lon: " + e.latlng.lng.toFixed(4);
+                    lastPointerLatLng = { lat: e.latlng.lat, lng: e.latlng.lng };
+                    renderCoordsDisplay(fallbackMap.getZoom(), e.latlng.lat, e.latlng.lng);
                 });
 
                 function syncFallbackState() {
                     var c = fallbackMap.getCenter();
                     var z = fallbackMap.getZoom();
+                    var pt = lastPointerLatLng || c;
+                    renderCoordsDisplay(z, pt.lat, pt.lng);
                     if (fallbackMinimap) {
                         fallbackMinimap.setView(c, Math.max(0, z - 5), { animate: false });
                     }
                     window.history.replaceState(null, '', window.location.pathname + window.location.search +
                         '#' + z + '/' + c.lat.toFixed(4) + '/' + c.lng.toFixed(4));
                 }
+                fallbackMap.on('zoom', syncFallbackState);
                 fallbackMap.on('moveend', syncFallbackState);
                 syncFallbackState();
             }).catch(function(err) {
@@ -480,9 +492,19 @@
                     }
                 }
 
+                function syncWebGLCoords() {
+                    if (!map) return;
+                    var c = map.getCenter();
+                    var pt = lastPointerLatLng || c;
+                    renderCoordsDisplay(map.getZoom(), pt.lat, pt.lng);
+                }
+
+                syncWebGLCoords();
+                map.on('zoom', syncWebGLCoords);
+                map.on('move', syncWebGLCoords);
                 map.on('mousemove', function (e) {
-                    document.getElementById('coords').innerHTML =
-                        "Lat: " + e.lngLat.lat.toFixed(4) + ", Lon: " + e.lngLat.lng.toFixed(4);
+                    lastPointerLatLng = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+                    renderCoordsDisplay(map.getZoom(), e.lngLat.lat, e.lngLat.lng);
                 });
 
                 try {

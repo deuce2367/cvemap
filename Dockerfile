@@ -53,10 +53,12 @@ RUN chmod +x /app/entrypoint.sh && \
       bn="$(basename "$d")"; \
       [ -e "/app/tileserver/fonts/$bn" ] || ln -s "$d" "/app/tileserver/fonts/$bn"; \
     done && \
-    ln -sfn "/app/static/vendor/carto-light/sprites" "/app/tileserver/sprites/carto-light" && \
-    ln -sfn "/app/static/vendor/carto-dark/sprites" "/app/tileserver/sprites/carto-dark" && \
-    ln -sfn "/app/static/vendor/carto-color/sprites" "/app/tileserver/sprites/carto-color" && \
-    ln -sfn "/app/static/vendor/osm-liberty/sprites" "/app/tileserver/sprites/osm-liberty"
+    for sp_dir in /app/static/vendor/*/sprites; do \
+      [ -d "$sp_dir" ] || continue; \
+      vname="$(basename "$(dirname "$sp_dir")")"; \
+      [ "$vname" = "protomaps-assets" ] && continue; \
+      ln -sfn "$sp_dir" "/app/tileserver/sprites/$vname"; \
+    done
 
 USER 1000:1000
 EXPOSE 8000 8080
