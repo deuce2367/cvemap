@@ -109,7 +109,7 @@
                 var lat = parseFloat(parts[1]);
                 var lng = parseFloat(parts[2]);
                 if (!isNaN(z) && !isNaN(lat) && !isNaN(lng)) {
-                    return { zoom: Math.max(1, Math.min(18, z)), lat: lat, lng: lng };
+                    return { zoom: Math.max(1, Math.min(20, z)), lat: lat, lng: lng };
                 }
             }
             return null;
@@ -125,6 +125,7 @@
             zoomSnap: 1,
             worldCopyJump: true,
             minZoom: 1,
+            maxZoom: 20,
         }).setView(
             initialHash ? [initialHash.lat, initialHash.lng] : [0, 0],
             initialHash ? initialHash.zoom : 4
@@ -392,6 +393,8 @@
                     format: 'image/png',
                     transparent: false,
                     tileSize: 512,
+                    minZoom: 1,
+                    maxZoom: 20,
                     attribution: 'TileServer GL WMS (' + formatStyleTitle(style) + (format === 'wms4326' ? ', EPSG:4326' : '') + ')'
                 });
                 wmsLayer.addTo(map);
@@ -399,7 +402,7 @@
             } else {
                 var tsLayer = L.tileLayer(xyzUrl, {
                     minZoom: 0,
-                    maxZoom: 18,
+                    maxZoom: 20,
                     maxNativeZoom: maxNative,
                     errorTileUrl: noDataSvg,
                     attribution: 'TileServer GL (' + formatStyleTitle(style) + ')'
@@ -410,7 +413,7 @@
 
             minimapLayer = L.tileLayer(xyzUrl, {
                 minZoom: 0,
-                maxZoom: 18,
+                maxZoom: 20,
                 maxNativeZoom: maxNative,
                 errorTileUrl: noDataSvg
             }).addTo(minimap);

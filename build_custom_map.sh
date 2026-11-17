@@ -54,17 +54,25 @@ fi
 PLANETILER_JAR="${SCRIPT_DIR}/basemaps/tiles/target/protomaps-basemap-HEAD-with-deps.jar"
 if [ ! -f "$PLANETILER_JAR" ]; then
     echo "==> Planetiler JAR not found. Compiling basemaps/tiles via Maven Docker..."
+    M2_CACHE_DIR="${SCRIPT_DIR}/.m2"
+    mkdir -p "${M2_CACHE_DIR}/repository"
     docker run --rm \
         -u "$(id -u):$(id -g)" \
+        -e HOME=/var/maven \
+        -e MAVEN_CONFIG=/var/maven/.m2 \
+        -v "${M2_CACHE_DIR}:/var/maven/.m2" \
         -v "${SCRIPT_DIR}/basemaps/tiles:/usr/src/app" \
         -w /usr/src/app \
         maven:3.9-eclipse-temurin-21 \
-        mvn clean package -DskipTests
+        mvn -Duser.home=/var/maven -Dmaven.repo.local=/var/maven/.m2/repository clean package -DskipTests
 fi
 
 ARGS=(
-    "-Xmx${JAVA_HEAP}" "-jar" "basemaps/tiles/target/protomaps-basemap-HEAD-with-deps.jar"
+    "-Xmx${JAVA_HEAP}"
+    "-Duser.home=/tmp"
+    "-jar" "basemaps/tiles/target/protomaps-basemap-HEAD-with-deps.jar"
     "--download"
+    "--download-threads=10"
     "--output=${OUTPUT_FILE}"
     "--maxzoom=${MAXZOOM}"
     "--force"
@@ -91,6 +99,7 @@ else
     echo "Local 'java' not found; running Planetiler inside eclipse-temurin:21-jre container..."
     docker run --rm \
         -u "$(id -u):$(id -g)" \
+        -e HOME=/tmp \
         -v "${SCRIPT_DIR}:/work" \
         -w /work \
         eclipse-temurin:21-jre \

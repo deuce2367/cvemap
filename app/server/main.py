@@ -635,6 +635,8 @@ def _serve_mvt_tile(layer: str, z: int, x: int, y: int) -> Response:
             media_type="application/x-protobuf",
             headers={"Content-Encoding": "gzip", "Access-Control-Allow-Origin": "*"},
         )
+    if 0 <= z <= int(target.get("maxZoom", 14)):
+        return Response(status_code=204, headers={"Access-Control-Allow-Origin": "*"})
     raise HTTPException(status_code=404, detail="Vector tile not found")
 
 

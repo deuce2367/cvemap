@@ -1,4 +1,5 @@
 .git
+/.m2/
 /data/
 /basemaps/
 /bin/

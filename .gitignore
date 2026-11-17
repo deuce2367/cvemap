@@ -37,6 +37,7 @@ package-lock.json
 
 # Temp & generated files
 .DS_Store
+/.m2/
 /data/
 /bin/
 /.build_stage_data/

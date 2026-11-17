@@ -305,8 +305,9 @@ public class Basemap extends ForwardingProfile {
       );
     } else {
       // Add OSM and GeoPackage sources
+      String osmDownloadUrl = "planet".equalsIgnoreCase(area) ? "aws:latest" : ("geofabrik:" + area);
       planetiler
-        .addOsmSource("osm", Path.of("data", "sources", area + ".osm.pbf"), "geofabrik:" + area)
+        .addOsmSource("osm", Path.of("data", "sources", area + ".osm.pbf"), osmDownloadUrl)
         .addShapefileSource("osm_water", sourcesDir.resolve("water-polygons-split-3857.zip"),
           "https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip")
         .addShapefileSource("osm_land", sourcesDir.resolve("land-polygons-split-3857.zip"),

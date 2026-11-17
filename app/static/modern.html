@@ -362,14 +362,15 @@
                     zoomControl: false,
                     worldCopyJump: true,
                     minZoom: 0,
-                    maxZoom: 18
+                    maxZoom: 20
                 }).setView([hv.lat, hv.lng], Math.round(hv.zoom));
                 L.control.zoom({ position: 'topright' }).addTo(fallbackMap);
 
+                var fallbackMaxNative = Math.max(dynamicMaxZoom || 18, 18);
                 fallbackTileLayer = L.tileLayer(tileUrl, {
                     minZoom: 0,
-                    maxZoom: 18,
-                    maxNativeZoom: dynamicMaxZoom || 18,
+                    maxZoom: 20,
+                    maxNativeZoom: fallbackMaxNative,
                     attribution: 'TileServer GL (' + theme + ')'
                 }).addTo(fallbackMap);
 
@@ -391,13 +392,13 @@
                     boxZoom: false,
                     keyboard: false,
                     minZoom: 0,
-                    maxZoom: 18
+                    maxZoom: 20
                 }).setView(fallbackMap.getCenter(), Math.max(0, fallbackMap.getZoom() - 5));
 
                 fallbackMiniLayer = L.tileLayer(tileUrl, {
                     minZoom: 0,
-                    maxZoom: 18,
-                    maxNativeZoom: dynamicMaxZoom || 18
+                    maxZoom: 20,
+                    maxNativeZoom: fallbackMaxNative
                 }).addTo(fallbackMinimap);
 
                 fallbackMiniRect = L.rectangle([[-90, -180], [90, 180]], {

@@ -220,15 +220,32 @@ def inspect_vector_mbtiles(filepath: str) -> dict | None:
         cur = conn.cursor()
         cur.execute("SELECT name, value FROM metadata")
         meta = {str(k).lower(): str(v) for k, v in cur.fetchall()}
-        conn.close()
 
         fmt = meta.get("format", "").strip().lower()
         if fmt != "pbf":
+            conn.close()
             _HEADER_CACHE[filepath] = (st.st_mtime, st.st_size, {})
             return None
 
+        actual_max_z: int | None = None
+        try:
+            row = cur.execute("SELECT MAX(zoom_level) FROM tiles").fetchone()
+            if row and row[0] is not None:
+                actual_max_z = int(row[0])
+        except Exception:
+            pass
+        conn.close()
+
         min_z = int(meta.get("minzoom", 0) or 0)
-        max_z = int(meta.get("maxzoom", 14) or 14)
+        raw_max = meta.get("maxzoom", "").strip()
+        if raw_max:
+            max_z = int(raw_max)
+            if actual_max_z is not None:
+                max_z = min(max_z, actual_max_z)
+        elif actual_max_z is not None:
+            max_z = actual_max_z
+        else:
+            max_z = 14
         bounds = None
         if "bounds" in meta:
             parts = [float(x.strip()) for x in meta["bounds"].split(",")]
@@ -250,12 +267,36 @@ def inspect_vector_mbtiles(filepath: str) -> dict | None:
 
 def _has_valid_pmtiles_magic(filepath: str) -> bool:
     try:
+        st = os.stat(filepath)
         with open(filepath, "rb") as f:
-            hdr = f.read(8)
-        if len(hdr) == 8 and hdr[:7] == b"PMTiles" and hdr[7] == 3:
-            return True
-        logger.warning("Skipping incomplete or corrupted PMTiles file (invalid header): %s", filepath)
-        return False
+            hdr = f.read(127)
+            if len(hdr) < 127 or hdr[:7] != b"PMTiles" or hdr[7] != 3:
+                logger.warning("Skipping incomplete or corrupted PMTiles file (invalid header): %s", filepath)
+                return False
+            tile_data_off, tile_data_len = struct.unpack("<QQ", hdr[56:72])
+            expected_end = tile_data_off + tile_data_len
+            if expected_end > st.st_size:
+                logger.warning(
+                    "Skipping truncated PMTiles file (%d < %d bytes): %s",
+                    st.st_size,
+                    expected_end,
+                    filepath,
+                )
+                return False
+            if hasattr(os, "SEEK_HOLE") and expected_end > 0:
+                try:
+                    first_hole = os.lseek(f.fileno(), 0, os.SEEK_HOLE)
+                    if 0 <= first_hole < expected_end:
+                        logger.warning(
+                            "Skipping incomplete PMTiles file with sparse hole at byte %d (< %d): %s",
+                            first_hole,
+                            expected_end,
+                            filepath,
+                        )
+                        return False
+                except OSError:
+                    pass
+        return True
     except OSError:
         return False
 
@@ -1769,10 +1810,11 @@ def sync_tileserver_runtime(
     for ds in datasets:
         ts_key = ds["ts_key"]
         abs_archive = os.path.abspath(os.path.join(data_dir, ds["path"]))
+        ds_max_z = int(ds.get("maxZoom", 14))
         if ds.get("is_pmtiles"):
             data_cfg[ts_key] = {"pmtiles": abs_archive}
             pmap_prefix = bool(ds.get("pmap_prefix", False))
-            pm_src = {"type": "vector", "url": f"pmtiles://{ts_key}"}
+            pm_src = {"type": "vector", "url": f"pmtiles://{ts_key}", "maxzoom": ds_max_z}
 
             # All 13 Protomaps styles on this PMTiles dataset
             for style_id, tpl in protomaps_templates.items():
@@ -1802,7 +1844,7 @@ def sync_tileserver_runtime(
 
         elif ds.get("is_mbtiles"):
             data_cfg[ts_key] = {"mbtiles": abs_archive}
-            mb_src = {"type": "vector", "url": f"mbtiles://{ts_key}"}
+            mb_src = {"type": "vector", "url": f"mbtiles://{ts_key}", "maxzoom": ds_max_z}
 
             # All 13 Protomaps styles adapted onto this OpenMapTiles MBTiles dataset
             for style_id, tpl in protomaps_templates.items():
