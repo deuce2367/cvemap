@@ -360,6 +360,9 @@
 
                 fallbackMap = L.map('map', {
                     zoomControl: false,
+                    wheelPxPerZoomLevel: 120,
+                    zoomDelta: 1,
+                    zoomSnap: 1,
                     worldCopyJump: true,
                     minZoom: 0,
                     maxZoom: 20
@@ -575,6 +578,10 @@
                         reportError("MAP ERROR", e.error);
                     }
                 });
+
+                if (map.scrollZoom) {
+                    map.scrollZoom.setZoomRate(1 / 225);
+                }
 
                 map.addControl(new maplibregl.NavigationControl({ showCompass: false }));
 
