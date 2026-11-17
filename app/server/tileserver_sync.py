@@ -20,6 +20,7 @@ TILESERVER_STYLES = [
     "black_and_white",
     "dark",
     "dusk_rose",
+    "elementary",
     "flat",
     "grayscale",
     "iris_bloom",
@@ -85,6 +86,8 @@ def make_dataset_style_id(dataset_name: str, style_id: str) -> str:
 
 
 def format_style_title(style_id: str) -> str:
+    if style_id == "elementary":
+        return "Elementary"
     if style_id in OPENMAPTILES_STYLE_DEFS:
         return OPENMAPTILES_STYLE_DEFS[style_id]["title"]
     if style_id == "black_and_white":
@@ -515,10 +518,14 @@ def _adapt_protomaps_style_to_openmaptiles(
     source_spec: dict,
     sprite_ref: str | None = None,
     glyphs_ref: str = "{fontstack}/{range}.pbf",
+    extra_sources: dict | None = None,
 ) -> dict:
     """Adapt any Protomaps basemap style JSON so it renders natively on an OpenMapTiles (.mbtiles) dataset."""
     adapted = copy.deepcopy(style_obj)
-    adapted["sources"] = {"protomaps": source_spec}
+    sources_dict = {"protomaps": source_spec}
+    if extra_sources:
+        sources_dict.update(extra_sources)
+    adapted["sources"] = sources_dict
     adapted["glyphs"] = glyphs_ref
     if sprite_ref is not None:
         adapted["sprite"] = sprite_ref
@@ -537,6 +544,10 @@ def _adapt_protomaps_style_to_openmaptiles(
     for lyr in adapted.get("layers", []):
         lid = lyr.get("id", "")
         ltype = lyr.get("type", "")
+
+        if lyr.get("source") == "choropleth":
+            new_layers.append(lyr)
+            continue
 
         # Drop earth polygon (background becomes land; water covers oceans & lakes)
         # and drop Protomaps triplicated _landcover/_natural clones & missing address_label
@@ -613,7 +624,7 @@ def _adapt_protomaps_style_to_openmaptiles(
             lyr["source-layer"] = "aeroway"
             cls_val = "taxiway" if "taxiway" in lid else "runway"
             lyr["filter"] = ["all", ["==", "$type", "LineString"], ["==", "class", cls_val]]
-        elif lid == "water":
+        elif lid in ("water", "water_outline"):
             lyr["source-layer"] = "water"
             lyr["filter"] = ["==", "$type", "Polygon"]
         elif lid == "water_stream":
@@ -634,10 +645,10 @@ def _adapt_protomaps_style_to_openmaptiles(
         elif lid == "buildings":
             lyr["source-layer"] = "building"
             lyr["filter"] = ["==", "$type", "Polygon"]
-        elif lid == "boundaries_country":
+        elif lid in ("boundaries_country", "boundaries_country_casing"):
             lyr["source-layer"] = "boundary"
             lyr["filter"] = ["all", ["<=", "admin_level", 2], ["!=", "maritime", 1]]
-        elif lid == "boundaries":
+        elif lid in ("boundaries", "boundaries_casing"):
             lyr["source-layer"] = "boundary"
             lyr["filter"] = ["all", [">", "admin_level", 2], ["!=", "maritime", 1]]
         elif lid.startswith("roads_") and ltype == "line":
@@ -1756,10 +1767,20 @@ def build_browser_style_json(
     sp_name = st_key if st_key in valid_pm_sprites else "light"
     glyphs_url = f"{origin}/static/vendor/protomaps-assets/fonts/{{fontstack}}/{{range}}.pbf"
     sprite_url = f"{origin}/static/vendor/protomaps-assets/sprites/v4/{sp_name}"
+    tpl_sources = protomaps_templates[st_key].get("sources") or {}
+    extra_browser_sources: dict = {}
+    if "choropleth" in tpl_sources:
+        extra_browser_sources["choropleth"] = {
+            "type": "vector",
+            "url": f"pmtiles://{origin}/static/vendor/elementary/choropleth.pmtiles",
+            "maxzoom": 7,
+        }
 
     if ds.get("is_pmtiles"):
         base_obj = copy.deepcopy(protomaps_templates[st_key])
-        base_obj["sources"] = {"protomaps": source_spec}
+        base_sources = {"protomaps": source_spec}
+        base_sources.update(extra_browser_sources)
+        base_obj["sources"] = base_sources
         base_obj["glyphs"] = glyphs_url
         base_obj["sprite"] = sprite_url
         return adapt_style_schema(base_obj, pmap_prefix=bool(ds.get("pmap_prefix", False)))
@@ -1769,6 +1790,7 @@ def build_browser_style_json(
         source_spec=source_spec,
         sprite_ref=sprite_url,
         glyphs_ref=glyphs_url,
+        extra_sources=extra_browser_sources,
     )
 
 
@@ -1800,6 +1822,18 @@ def sync_tileserver_runtime(
     if primary_pmtiles and os.path.isfile(primary_pmtiles):
         data_cfg["planet"] = {"pmtiles": os.path.abspath(primary_pmtiles)}
 
+    choropleth_pmtiles = (
+        os.path.join(vendor_dir, "elementary", "choropleth.pmtiles") if vendor_dir else ""
+    )
+    has_choropleth_pmtiles = bool(choropleth_pmtiles and os.path.isfile(choropleth_pmtiles))
+    if has_choropleth_pmtiles:
+        data_cfg["elementary_choropleth"] = {"pmtiles": os.path.abspath(choropleth_pmtiles)}
+    ts_choropleth_src = {
+        "type": "vector",
+        "url": "pmtiles://elementary_choropleth",
+        "maxzoom": 7,
+    }
+
     default_ts_key = datasets[0]["ts_key"] if datasets else ""
     if primary_pmtiles and os.path.isfile(primary_pmtiles):
         rel_primary = os.path.relpath(primary_pmtiles, data_dir)
@@ -1816,10 +1850,13 @@ def sync_tileserver_runtime(
             pmap_prefix = bool(ds.get("pmap_prefix", False))
             pm_src = {"type": "vector", "url": f"pmtiles://{ts_key}", "maxzoom": ds_max_z}
 
-            # All 13 Protomaps styles on this PMTiles dataset
+            # All Protomaps styles on this PMTiles dataset
             for style_id, tpl in protomaps_templates.items():
                 base_obj = copy.deepcopy(tpl)
-                base_obj["sources"] = {"protomaps": pm_src}
+                sources_dict = {"protomaps": pm_src}
+                if has_choropleth_pmtiles and "choropleth" in (tpl.get("sources") or {}):
+                    sources_dict["choropleth"] = copy.deepcopy(ts_choropleth_src)
+                base_obj["sources"] = sources_dict
                 adapted = adapt_style_schema(base_obj, pmap_prefix=pmap_prefix)
                 ds_style_key = f"{ts_key}__{style_id}"
                 ds_fname = f"{ds_style_key}.json"
@@ -1827,7 +1864,7 @@ def sync_tileserver_runtime(
                     json.dump(adapted, f)
                 styles_cfg[ds_style_key] = {"style": ds_fname}
 
-            # All 4 OpenMapTiles styles adapted onto this PMTiles dataset
+            # All OpenMapTiles styles adapted onto this PMTiles dataset
             for style_id, tpl in omt_templates.items():
                 sprite_ref = OPENMAPTILES_STYLE_DEFS[style_id]["sprite"]
                 adapted = _adapt_openmaptiles_style_to_protomaps(
@@ -1846,9 +1883,18 @@ def sync_tileserver_runtime(
             data_cfg[ts_key] = {"mbtiles": abs_archive}
             mb_src = {"type": "vector", "url": f"mbtiles://{ts_key}", "maxzoom": ds_max_z}
 
-            # All 13 Protomaps styles adapted onto this OpenMapTiles MBTiles dataset
+            # All Protomaps styles adapted onto this OpenMapTiles MBTiles dataset
             for style_id, tpl in protomaps_templates.items():
-                adapted = _adapt_protomaps_style_to_openmaptiles(tpl, source_spec=mb_src)
+                extra_s = (
+                    {"choropleth": copy.deepcopy(ts_choropleth_src)}
+                    if has_choropleth_pmtiles and "choropleth" in (tpl.get("sources") or {})
+                    else None
+                )
+                adapted = _adapt_protomaps_style_to_openmaptiles(
+                    tpl,
+                    source_spec=mb_src,
+                    extra_sources=extra_s,
+                )
                 ds_style_key = f"{ts_key}__{style_id}"
                 ds_fname = f"{ds_style_key}.json"
                 with open(os.path.join(styles_out_dir, ds_fname), "w") as f:

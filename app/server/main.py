@@ -204,12 +204,16 @@ def xyz_dataset_style_endpoint(dataset: str, style: str, z: int, x: int, y: int)
 
 
 @functools.lru_cache(maxsize=512)
-def _fetch_tile_bytes(style: str, z: int, x: int, y: int) -> bytes | None:
+def _fetch_tile_bytes_cached(style: str, z: int, x: int, y: int) -> bytes:
     url = f"{TILESERVER_INTERNAL_URL}/styles/{style}/{z}/{x}/{y}.png"
+    req = urllib.request.Request(url, headers={"User-Agent": "CVEMAP-WMS/1.0"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return resp.read()
+
+
+def _fetch_tile_bytes(style: str, z: int, x: int, y: int) -> bytes | None:
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "CVEMAP-WMS/1.0"})
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            return resp.read()
+        return _fetch_tile_bytes_cached(style, z, x, y)
     except Exception as exc:
         logger.debug("WMS tile fetch failed for %s/%d/%d/%d: %s", style, z, x, y, exc)
         return None

@@ -196,7 +196,7 @@
 
         var noDataSvg = "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="rgba(0,0,0,0.05)" stroke="rgba(0,0,0,0.1)" stroke-width="1"/><text x="128" y="128" font-family="sans-serif" font-size="16" font-weight="bold" fill="#333" text-anchor="middle" dominant-baseline="middle">No Data</text></svg>');
 
-        var tileserverStyles = ['bio', 'black', 'black_and_white', 'dark', 'dusk_rose', 'flat', 'grayscale', 'iris_bloom', 'light', 'rainforest', 'seafoam', 'sol', 'white'];
+        var tileserverStyles = ['bio', 'black', 'black_and_white', 'dark', 'dusk_rose', 'elementary', 'flat', 'grayscale', 'iris_bloom', 'light', 'rainforest', 'seafoam', 'sol', 'white'];
         var openmaptilesStyles = [
             { id: 'fiord', title: 'Fiord' },
             { id: 'maptiler_basic', title: 'MapTiler Basic' },
@@ -211,6 +211,7 @@
         var targetLayer = null;
 
         function formatStyleTitle(st) {
+            if (st === 'elementary') return 'Elementary';
             var omtMatch = openmaptilesStyles.find(function(o) { return o.id === st; });
             if (omtMatch) return omtMatch.title;
             if (st === 'black_and_white') return 'Protomaps Black & White';

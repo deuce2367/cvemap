@@ -11,6 +11,7 @@ import com.protomaps.basemap.feature.CountryCoder;
 import com.protomaps.basemap.feature.QrankDb;
 import com.protomaps.basemap.layers.Boundaries;
 import com.protomaps.basemap.layers.Buildings;
+import com.protomaps.basemap.layers.Choropleth;
 import com.protomaps.basemap.layers.Earth;
 import com.protomaps.basemap.layers.Landcover;
 import com.protomaps.basemap.layers.Landuse;
@@ -116,6 +117,12 @@ public class Basemap extends ForwardingProfile {
       registerSourceHandler("osm_land", earth::processPreparedOsm);
       registerSourceHandler("ne", earth::processNe);
       registerSourceHandler("pm:overture", earth::processOverture);
+    }
+
+    if (layer.isEmpty() || layer.equals(Choropleth.LAYER_NAME)) {
+      var choropleth = new Choropleth();
+      registerHandler(choropleth);
+      registerSourceHandler("ne", choropleth::processNe);
     }
 
     if (clip != null) {
@@ -284,75 +291,10 @@ public class Basemap extends ForwardingProfile {
       }
     }
 
-    var planetiler = Planetiler.create(args)
-      .addGeoPackageSource("ne", sourcesDir.resolve("natural_earth_vector.gpkg.zip"),
-        "https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip");
-
-    if (!overtureFile.isEmpty()) {
-      Path base = args.inputFile("overture", "overture base directory", Path.of("data", "overture"));
-      var hivePartitoning = false;
-      var inputPaths = List.of(Path.of(overtureFile));
-      if (!overtureFile.endsWith(".parquet")) {
-        inputPaths = Glob.of(base).resolve("**", "*.parquet").find();
-        hivePartitoning = true;
-      }
-      // Add Overture Parquet source
-      planetiler.addParquetSource("pm:overture",
-        inputPaths,
-        hivePartitoning,
-        fields -> fields.get("id"),
-        fields -> fields.get("type") // source layer
-      );
-    } else {
-      // Add OSM and GeoPackage sources
-      String osmDownloadUrl = "planet".equalsIgnoreCase(area) ? "aws:latest" : ("geofabrik:" + area);
-      planetiler
-        .addOsmSource("osm", Path.of("data", "sources", area + ".osm.pbf"), osmDownloadUrl)
-        .addShapefileSource("osm_water", sourcesDir.resolve("water-polygons-split-3857.zip"),
-          "https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip")
-        .addShapefileSource("osm_land", sourcesDir.resolve("land-polygons-split-3857.zip"),
-          "https://osmdata.openstreetmap.de/download/land-polygons-split-3857.zip")
-        .addGeoPackageSource("landcover", sourcesDir.resolve("daylight-landcover.gpkg"),
-          "https://r2-public.protomaps.com/datasets/daylight-landcover.gpkg");
-    }
-
-    Path pgfEncodingZip = sourcesDir.resolve("pgf-encoding.zip");
-    Path qrankCsv = sourcesDir.resolve("qrank.csv.gz");
-
-    if (!Files.exists(qrankCsv)) {
-      Downloader.create(planetiler.config())
-        .add("qrank", "https://qrank.toolforge.org/download/qrank.csv.gz", qrankCsv)
-        .run();
-    }
-
-    var qrankDb = QrankDb.fromCsv(qrankCsv);
-
-    if (!Files.exists(pgfEncodingZip)) {
-      Downloader.create(planetiler.config())
-        .add("pgf-encoding", "https://wipfli.github.io/pgf-encoding/pgf-encoding.zip", pgfEncodingZip)
-        .run();
-    }
-
-    FontRegistry fontRegistry = FontRegistry.getInstance();
-    fontRegistry.setZipFilePath(pgfEncodingZip.toString());
-
-    Clip clip = null;
-    double clipBuffer = args.getDouble("clip_buffer",
-      "Relative buffer around clip polygon. 0 for exact boundary.", Clip.DEFAULT_BUFFER);
-    if (clipBuffer < 0) {
-      LOGGER.error("Error: --clip-buffer must be >= 0, but was {}", clipBuffer);
-      System.exit(1);
-    }
-    var clipArg = args.getString("clip", "File path to GeoJSON Polygon or MultiPolygon geometry to clip tileset.", "");
-    if (!clipArg.isEmpty()) {
-      clip =
-        Clip.fromGeoJSONFile(args.getStats(), planetiler.config().minzoom(), planetiler.config().maxzoom(), true,
-          clipBuffer, Paths.get(clipArg));
-    }
-
     List<String> availableLayers = List.of(
       Boundaries.LAYER_NAME,
       Buildings.LAYER_NAME,
+      Choropleth.LAYER_NAME,
       Landuse.LAYER_NAME,
       Landcover.LAYER_NAME,
       Places.LAYER_NAME,
@@ -371,7 +313,75 @@ public class Basemap extends ForwardingProfile {
       System.exit(1);
     }
 
-    fontRegistry.loadFontBundle("NotoSansDevanagari-Regular", "1", "Devanagari");
+    var planetiler = Planetiler.create(args)
+      .addGeoPackageSource("ne", sourcesDir.resolve("natural_earth_vector.gpkg.zip"),
+        "https://naciscdn.org/naturalearth/packages/natural_earth_vector.gpkg.zip");
+
+    QrankDb qrankDb = null;
+    if (!Choropleth.LAYER_NAME.equals(layer)) {
+      if (!overtureFile.isEmpty()) {
+        Path base = args.inputFile("overture", "overture base directory", Path.of("data", "overture"));
+        var hivePartitoning = false;
+        var inputPaths = List.of(Path.of(overtureFile));
+        if (!overtureFile.endsWith(".parquet")) {
+          inputPaths = Glob.of(base).resolve("**", "*.parquet").find();
+          hivePartitoning = true;
+        }
+        // Add Overture Parquet source
+        planetiler.addParquetSource("pm:overture",
+          inputPaths,
+          hivePartitoning,
+          fields -> fields.get("id"),
+          fields -> fields.get("type") // source layer
+        );
+      } else {
+        // Add OSM and GeoPackage sources
+        String osmDownloadUrl = "planet".equalsIgnoreCase(area) ? "aws:latest" : ("geofabrik:" + area);
+        planetiler
+          .addOsmSource("osm", Path.of("data", "sources", area + ".osm.pbf"), osmDownloadUrl)
+          .addShapefileSource("osm_water", sourcesDir.resolve("water-polygons-split-3857.zip"),
+            "https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip")
+          .addShapefileSource("osm_land", sourcesDir.resolve("land-polygons-split-3857.zip"),
+            "https://osmdata.openstreetmap.de/download/land-polygons-split-3857.zip")
+          .addGeoPackageSource("landcover", sourcesDir.resolve("daylight-landcover.gpkg"),
+            "https://r2-public.protomaps.com/datasets/daylight-landcover.gpkg");
+      }
+
+      Path pgfEncodingZip = sourcesDir.resolve("pgf-encoding.zip");
+      Path qrankCsv = sourcesDir.resolve("qrank.csv.gz");
+
+      if (!Files.exists(qrankCsv)) {
+        Downloader.create(planetiler.config())
+          .add("qrank", "https://qrank.toolforge.org/download/qrank.csv.gz", qrankCsv)
+          .run();
+      }
+
+      qrankDb = QrankDb.fromCsv(qrankCsv);
+
+      if (!Files.exists(pgfEncodingZip)) {
+        Downloader.create(planetiler.config())
+          .add("pgf-encoding", "https://wipfli.github.io/pgf-encoding/pgf-encoding.zip", pgfEncodingZip)
+          .run();
+      }
+
+      FontRegistry fontRegistry = FontRegistry.getInstance();
+      fontRegistry.setZipFilePath(pgfEncodingZip.toString());
+      fontRegistry.loadFontBundle("NotoSansDevanagari-Regular", "1", "Devanagari");
+    }
+
+    Clip clip = null;
+    double clipBuffer = args.getDouble("clip_buffer",
+      "Relative buffer around clip polygon. 0 for exact boundary.", Clip.DEFAULT_BUFFER);
+    if (clipBuffer < 0) {
+      LOGGER.error("Error: --clip-buffer must be >= 0, but was {}", clipBuffer);
+      System.exit(1);
+    }
+    var clipArg = args.getString("clip", "File path to GeoJSON Polygon or MultiPolygon geometry to clip tileset.", "");
+    if (!clipArg.isEmpty()) {
+      clip =
+        Clip.fromGeoJSONFile(args.getStats(), planetiler.config().minzoom(), planetiler.config().maxzoom(), true,
+          clipBuffer, Paths.get(clipArg));
+    }
 
     String outputName;
     if (!overtureFile.isEmpty()) {

@@ -1,5 +1,6 @@
 # Map data files & runtime data directory
 *.pmtiles
+!/app/static/vendor/elementary/choropleth.pmtiles
 *.mbtiles
 *.shp
 *.shx

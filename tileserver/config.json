@@ -14,6 +14,7 @@
     "black_and_white": { "style": "black_and_white.json" },
     "dark": { "style": "dark.json" },
     "dusk_rose": { "style": "dusk_rose.json" },
+    "elementary": { "style": "elementary.json" },
     "flat": { "style": "flat.json" },
     "grayscale": { "style": "grayscale.json" },
     "iris_bloom": { "style": "iris_bloom.json" },
