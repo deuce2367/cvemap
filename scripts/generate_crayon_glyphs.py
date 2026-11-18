@@ -1,12 +1,29 @@
 #!/usr/bin/env python3
 """
 Generate MapLibre / TileServer-GL Signed Distance Field (SDF) PBF glyph stacks
-for the CC0 1.0 Public Domain "Crayon Libre" typeface:
-  - Crayon Libre Regular
-  - Crayon Libre Bold
-  - Crayon Libre Italic
+for CVEMAP custom themes:
+  1. Elementary (CC0 1.0 Public Domain "Crayon Libre"):
+     - Crayon Libre Regular
+     - Crayon Libre Bold
+     - Crayon Libre Italic
+  2. Matrix (SIL OFL 1.1 "Share Tech Mono"):
+     - Share Tech Mono Regular
+     - Share Tech Mono Bold
+     - Share Tech Mono Italic
+  3. Wasteland (SIL OFL 1.1 "Black Ops One" & "Quantico"):
+     - Black Ops One Regular
+     - Quantico Regular
+     - Quantico Italic
+  4. Tolkien (SIL OFL 1.1 "Charm" calligraphic quill script):
+     - Charm Bold
+     - Charm Regular
+     - Charm Italic
+  5. Paladin (SIL OFL 1.1 "Orbitron" futuristic robotic/metallic):
+     - Orbitron Bold
+     - Orbitron Regular
+     - Orbitron Italic
 
-For Unicode code points outside Crayon Libre's character map (such as CJK, Arabic,
+For Unicode code points outside a font's character map (such as CJK, Arabic,
 Cyrillic, Devanagari, etc.), glyphs seamlessly fall back to the bundled Noto Sans
 PBF stacks so international labels never drop characters.
 """
@@ -15,7 +32,7 @@ import os
 import shutil
 import numpy as np
 from fontTools.ttLib import TTFont
-from PIL import ImageFont
+from PIL import Image, ImageFont
 from scipy.ndimage import binary_closing, binary_dilation, distance_transform_edt
 
 
@@ -108,7 +125,6 @@ def parse_existing_pbf_glyphs(pbf_path: str) -> dict[int, bytes]:
                     sub = data[pos : pos + l]
                     pos += l
                     if sfn == 3:
-                        # Parse codepoint id (field 1) from glyph message
                         gpos = 0
                         cp = None
                         while gpos < len(sub):
@@ -148,8 +164,9 @@ def render_sdf_glyph(
     ascent24: int,
     codepoint: int,
     scale: int = 4,
-    close_iters: int = 1,
+    close_iters: int = 0,
     dilate_iters: int = 0,
+    italic_shear: float = 0.0,
 ) -> bytes | None:
     ch = chr(codepoint)
     try:
@@ -171,19 +188,31 @@ def render_sdf_glyph(
             advance=adv24,
         )
 
-    mask_hi, (dx_hi, dy_hi) = font_hi.getmask2(ch, mode="L")
+    mask_hi, _ = font_hi.getmask2(ch, mode="L")
     mw, mh = mask_hi.size
     if mw == 0 or mh == 0:
         return None
 
-    # Ensure hi-res canvas is an exact multiple of `scale` matching w24, h24
+    arr_hi = np.array(mask_hi, dtype=np.uint8).reshape((mh, mw))
+    if italic_shear > 0.0:
+        extra_shear_w = int(np.ceil(mh * italic_shear))
+        im_hi = Image.fromarray(arr_hi)
+        sheared = im_hi.transform(
+            (mw + extra_shear_w, mh),
+            Image.Transform.AFFINE,
+            (1.0, italic_shear, -extra_shear_w, 0.0, 1.0, 0.0),
+            resample=Image.Resampling.BILINEAR,
+        )
+        arr_hi = np.array(sheared, dtype=np.uint8)
+        mw, mh = arr_hi.shape[1], arr_hi.shape[0]
+        w24 = int(np.ceil(mw / float(scale)))
+
     extra_px = 1 if dilate_iters > 0 else 0
     out_w = w24 + extra_px
     out_h = h24 + extra_px
     target_hi_w = out_w * scale
     target_hi_h = out_h * scale
 
-    arr_hi = np.array(mask_hi, dtype=np.uint8).reshape((mh, mw))
     canvas_hi = np.zeros((target_hi_h, target_hi_w), dtype=bool)
     copy_h = min(mh, target_hi_h)
     copy_w = min(mw, target_hi_w)
@@ -229,21 +258,19 @@ def generate_font_stack(
     ttf_path: str,
     fallback_dir: str,
     out_dirs: list[str],
-    close_iters: int = 1,
+    close_iters: int = 0,
     dilate_iters: int = 0,
+    italic_shear: float = 0.0,
 ) -> None:
     tt = TTFont(ttf_path)
-    cmap = set(tt.getBestCmap().keys())
-    # Exclude control chars except 32 (space)
-    cmap = {cp for cp in cmap if cp >= 32}
+    cmap = {cp for cp in tt.getBestCmap().keys() if cp >= 32}
 
     scale = 4
     font24 = ImageFont.truetype(ttf_path, 24)
     font_hi = ImageFont.truetype(ttf_path, 24 * scale)
     ascent24, _ = font24.getmetrics()
 
-    # Pre-render all supported Crayon Libre codepoints
-    rendered_crayon: dict[int, bytes] = {}
+    rendered: dict[int, bytes] = {}
     for cp in sorted(cmap):
         msg = render_sdf_glyph(
             font24=font24,
@@ -253,9 +280,10 @@ def generate_font_stack(
             scale=scale,
             close_iters=close_iters,
             dilate_iters=dilate_iters,
+            italic_shear=italic_shear,
         )
         if msg is not None:
-            rendered_crayon[cp] = msg
+            rendered[cp] = msg
 
     for d in out_dirs:
         os.makedirs(d, exist_ok=True)
@@ -266,11 +294,11 @@ def generate_font_stack(
         fb_pbf = os.path.join(fallback_dir, f"{range_str}.pbf")
         fb_glyphs = parse_existing_pbf_glyphs(fb_pbf)
 
-        merged_cps = sorted(set(fb_glyphs.keys()) | {cp for cp in rendered_crayon if start <= cp <= end})
+        merged_cps = sorted(set(fb_glyphs.keys()) | {cp for cp in rendered if start <= cp <= end})
         glyph_msgs = []
         for cp in merged_cps:
-            if cp in rendered_crayon:
-                glyph_msgs.append(rendered_crayon[cp])
+            if cp in rendered:
+                glyph_msgs.append(rendered[cp])
             elif cp in fb_glyphs:
                 glyph_msgs.append(fb_glyphs[cp])
 
@@ -279,47 +307,151 @@ def generate_font_stack(
             with open(os.path.join(d, f"{range_str}.pbf"), "wb") as f:
                 f.write(pbf_bytes)
 
-    print(f"Generated {font_name} ({len(rendered_crayon)} Crayon Libre glyphs + Noto fallback across 256 ranges)")
+    print(f"Generated {font_name} ({len(rendered)} glyphs + Noto fallback across 256 ranges)")
 
 
 def main() -> None:
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    src_font_dir = os.path.join(repo_root, "tileserver", "fonts", "crayon-libre")
-    os.makedirs(src_font_dir, exist_ok=True)
-
-    for fn in ("CrayonLibre-Regular.ttf", "CrayonLibre-Italic.ttf", "CRAYON_LIBRE_LICENSE.txt"):
-        tmp_src = os.path.join("/tmp/fonts_test", fn)
-        if os.path.isfile(tmp_src):
-            shutil.copy2(tmp_src, os.path.join(src_font_dir, fn))
-
     ts_fonts = os.path.join(repo_root, "tileserver", "fonts")
     pm_fonts = os.path.join(repo_root, "app", "static", "vendor", "protomaps-assets", "fonts")
 
+    crayon_dir = os.path.join(ts_fonts, "crayon-libre")
+    matrix_font_dir = os.path.join(ts_fonts, "share-tech-mono")
+    wasteland_font_dir = os.path.join(ts_fonts, "wasteland-fonts")
+    tolkien_font_dir = os.path.join(ts_fonts, "tolkien-fonts")
+    paladin_font_dir = os.path.join(ts_fonts, "paladin-fonts")
+
     specs = [
+        # Elementary (Crayon Libre - CC0 Public Domain)
         (
             "Crayon Libre Regular",
-            os.path.join(src_font_dir, "CrayonLibre-Regular.ttf"),
+            os.path.join(crayon_dir, "CrayonLibre-Regular.ttf"),
             os.path.join(ts_fonts, "Noto Sans Regular"),
             1,
             0,
+            0.0,
         ),
         (
             "Crayon Libre Bold",
-            os.path.join(src_font_dir, "CrayonLibre-Regular.ttf"),
+            os.path.join(crayon_dir, "CrayonLibre-Regular.ttf"),
             os.path.join(ts_fonts, "Noto Sans Medium"),
             2,
             1,
+            0.0,
         ),
         (
             "Crayon Libre Italic",
-            os.path.join(src_font_dir, "CrayonLibre-Italic.ttf"),
+            os.path.join(crayon_dir, "CrayonLibre-Italic.ttf"),
             os.path.join(ts_fonts, "Noto Sans Italic"),
             1,
             0,
+            0.0,
+        ),
+        # Matrix (Share Tech Mono - SIL OFL 1.1)
+        (
+            "Share Tech Mono Regular",
+            os.path.join(matrix_font_dir, "ShareTechMono-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Share Tech Mono Bold",
+            os.path.join(matrix_font_dir, "ShareTechMono-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            1,
+            0.0,
+        ),
+        (
+            "Share Tech Mono Italic",
+            os.path.join(matrix_font_dir, "ShareTechMono-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.20,
+        ),
+        # Wasteland (Black Ops One + Quantico - SIL OFL 1.1)
+        (
+            "Black Ops One Regular",
+            os.path.join(wasteland_font_dir, "BlackOpsOne-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Quantico Regular",
+            os.path.join(wasteland_font_dir, "Quantico-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Quantico Italic",
+            os.path.join(wasteland_font_dir, "Quantico-Italic.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.0,
+        ),
+        # Tolkien (Charm calligraphic quill script - SIL OFL 1.1)
+        (
+            "Charm Bold",
+            os.path.join(tolkien_font_dir, "Charm-Bold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Charm Regular",
+            os.path.join(tolkien_font_dir, "Charm-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Charm Italic",
+            os.path.join(tolkien_font_dir, "Charm-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.14,
+        ),
+        # Paladin (Orbitron robotic/metallic geometric - SIL OFL 1.1)
+        (
+            "Orbitron Bold",
+            os.path.join(paladin_font_dir, "Orbitron-Bold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Orbitron Regular",
+            os.path.join(paladin_font_dir, "Orbitron-Medium.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Orbitron Italic",
+            os.path.join(paladin_font_dir, "Orbitron-Medium.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.16,
         ),
     ]
 
-    for font_name, ttf_path, fb_dir, close_it, dilate_it in specs:
+    for font_name, ttf_path, fb_dir, close_it, dilate_it, shear in specs:
+        if not os.path.isfile(ttf_path):
+            continue
         out_dirs = [
             os.path.join(ts_fonts, font_name),
             os.path.join(pm_fonts, font_name),
@@ -331,6 +463,7 @@ def main() -> None:
             out_dirs=out_dirs,
             close_iters=close_it,
             dilate_iters=dilate_it,
+            italic_shear=shear,
         )
 
 

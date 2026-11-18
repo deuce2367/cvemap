@@ -25,9 +25,13 @@ TILESERVER_STYLES = [
     "grayscale",
     "iris_bloom",
     "light",
+    "matrix",
+    "paladin",
     "rainforest",
     "seafoam",
     "sol",
+    "tolkien",
+    "wasteland",
     "white",
 ]
 
@@ -86,8 +90,8 @@ def make_dataset_style_id(dataset_name: str, style_id: str) -> str:
 
 
 def format_style_title(style_id: str) -> str:
-    if style_id == "elementary":
-        return "Elementary"
+    if style_id in ("elementary", "matrix", "paladin", "tolkien", "wasteland"):
+        return style_id.replace("_", " ").title()
     if style_id in OPENMAPTILES_STYLE_DEFS:
         return OPENMAPTILES_STYLE_DEFS[style_id]["title"]
     if style_id == "black_and_white":
@@ -599,6 +603,9 @@ def _adapt_protomaps_style_to_openmaptiles(
         elif lid == "landuse_urban_green":
             lyr["source-layer"] = "landuse"
             lyr["filter"] = ["in", "class", "park", "pitch", "playground", "grass", "cemetery"]
+        elif lid == "landuse_populated_glow":
+            lyr["source-layer"] = "landuse"
+            lyr["filter"] = ["in", "class", "residential", "commercial", "retail", "suburb", "quarter"]
         elif lid == "landuse_hospital":
             lyr["source-layer"] = "landuse"
             lyr["filter"] = ["==", "class", "hospital"]
@@ -624,7 +631,7 @@ def _adapt_protomaps_style_to_openmaptiles(
             lyr["source-layer"] = "aeroway"
             cls_val = "taxiway" if "taxiway" in lid else "runway"
             lyr["filter"] = ["all", ["==", "$type", "LineString"], ["==", "class", cls_val]]
-        elif lid in ("water", "water_outline"):
+        elif lid in ("water", "water_texture", "water_outline"):
             lyr["source-layer"] = "water"
             lyr["filter"] = ["==", "$type", "Polygon"]
         elif lid == "water_stream":
@@ -645,7 +652,7 @@ def _adapt_protomaps_style_to_openmaptiles(
         elif lid == "buildings":
             lyr["source-layer"] = "building"
             lyr["filter"] = ["==", "$type", "Polygon"]
-        elif lid in ("boundaries_country", "boundaries_country_casing"):
+        elif lid in ("boundaries_country", "boundaries_country_casing", "boundaries_country_outer"):
             lyr["source-layer"] = "boundary"
             lyr["filter"] = ["all", ["<=", "admin_level", 2], ["!=", "maritime", 1]]
         elif lid in ("boundaries", "boundaries_casing"):
@@ -1764,7 +1771,12 @@ def build_browser_style_json(
         return None
 
     valid_pm_sprites = {"light", "dark", "grayscale", "black", "white"}
-    sp_name = st_key if st_key in valid_pm_sprites else "light"
+    tpl_sprite = str(protomaps_templates[st_key].get("sprite", "")).split("/")[-1]
+    sp_name = (
+        st_key
+        if st_key in valid_pm_sprites
+        else (tpl_sprite if tpl_sprite in valid_pm_sprites else "light")
+    )
     glyphs_url = f"{origin}/static/vendor/protomaps-assets/fonts/{{fontstack}}/{{range}}.pbf"
     sprite_url = f"{origin}/static/vendor/protomaps-assets/sprites/v4/{sp_name}"
     tpl_sources = protomaps_templates[st_key].get("sources") or {}

@@ -19,9 +19,13 @@
     "grayscale": { "style": "grayscale.json" },
     "iris_bloom": { "style": "iris_bloom.json" },
     "light": { "style": "light.json" },
+    "matrix": { "style": "matrix.json" },
+    "paladin": { "style": "paladin.json" },
     "rainforest": { "style": "rainforest.json" },
     "seafoam": { "style": "seafoam.json" },
     "sol": { "style": "sol.json" },
+    "tolkien": { "style": "tolkien.json" },
+    "wasteland": { "style": "wasteland.json" },
     "white": { "style": "white.json" }
   },
   "data": {
