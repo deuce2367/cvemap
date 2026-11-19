@@ -17,6 +17,8 @@ IMAGE_REPO="cvemap"
 CUSTOM_TAG=""
 DATA_SRC="app/data"
 INCLUDE_ARCHIVES=""
+CVEMAP_UID="${CVEMAP_UID:-4038}"
+CVEMAP_GID="${CVEMAP_GID:-1000}"
 
 show_help() {
   cat <<'EOF'
@@ -37,6 +39,8 @@ Options for --full:
 
 General Options:
   --tag <image:tag>        Override output image tag
+  --uid <uid>              Container cvemap user UID (default: 4038)
+  --gid <gid>              Container cvemap group GID (default: 1000)
   -h, --help               Show this help message
 
 Examples:
@@ -59,6 +63,8 @@ while [ "$#" -gt 0 ]; do
     --data-dir)  DATA_SRC="$2"; shift 2 ;;
     --include)   INCLUDE_ARCHIVES="$2"; shift 2 ;;
     --tag)       CUSTOM_TAG="$2"; shift 2 ;;
+    --uid)       CVEMAP_UID="$2"; shift 2 ;;
+    --gid)       CVEMAP_GID="$2"; shift 2 ;;
     -h|--help)   show_help; exit 0 ;;
     *) echo "Error: Unknown option '$1'. Run '$0 --help' for usage." >&2; exit 1 ;;
   esac
@@ -102,9 +108,11 @@ prepare_full_data_src() {
 
 build_lite() {
   local tag="${1:-${IMAGE_REPO}:lite}"
-  echo "==> Building unified lite image (${tag}) ..."
+  echo "==> Building unified lite image (${tag}) [cvemap ${CVEMAP_UID}:${CVEMAP_GID}] ..."
   DOCKER_BUILDKIT=1 docker build \
     --target lite \
+    --build-arg "CVEMAP_UID=${CVEMAP_UID}" \
+    --build-arg "CVEMAP_GID=${CVEMAP_GID}" \
     -t "${tag}" \
     -f Dockerfile \
     .
@@ -115,10 +123,12 @@ build_full() {
   local tag="${1:-${IMAGE_REPO}:full}"
   local src
   src="$(prepare_full_data_src)"
-  echo "==> Building unified full image (${tag}) from data source '${src}' ..."
+  echo "==> Building unified full image (${tag}) from data source '${src}' [cvemap ${CVEMAP_UID}:${CVEMAP_GID}] ..."
   DOCKER_BUILDKIT=1 docker build \
     --target full \
     --build-arg "DATA_SRC=${src}" \
+    --build-arg "CVEMAP_UID=${CVEMAP_UID}" \
+    --build-arg "CVEMAP_GID=${CVEMAP_GID}" \
     -t "${tag}" \
     -f Dockerfile \
     .

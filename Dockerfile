@@ -26,20 +26,36 @@ RUN apt-get update && \
 # ==============================================================================
 FROM maptiler/tileserver-gl:latest AS lite
 
+ARG CVEMAP_UID=4038
+ARG CVEMAP_GID=1000
+
 USER root
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    HOME="/home/cvemap" \
     PATH="/opt/venv/bin:${PATH}"
 
-# Apply Ubuntu security updates, install minimal Python runtime, and purge unused C -dev headers
+# Apply Ubuntu security updates, install Python runtime & essential ops utilities,
+# and purge unused C -dev headers.
 RUN apt-get update && \
     apt-get dist-upgrade -y --no-install-recommends && \
     apt-get install -y --no-install-recommends \
-      python3 \
+      bash-completion \
+      ca-certificates \
       curl \
-      procps && \
+      htop \
+      iproute2 \
+      iputils-ping \
+      jq \
+      less \
+      openssh-client \
+      procps \
+      python3 \
+      rsync \
+      sysstat \
+      vim && \
     dpkg-query -W -f='${Package}\n' | \
       grep -Ev -- '(-dev$|^libc-dev-bin$|^linux-libc-dev$|^libglib2\.0-dev-bin$|^python3-pip-whl$|^python3-venv$)' | \
       xargs -r apt-mark manual >/dev/null && \
@@ -48,6 +64,24 @@ RUN apt-get update && \
       xargs -r apt-get purge -y --auto-remove && \
     mkdir -p -m 1777 /tmp/.X11-unix && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Create configurable cvemap group and user (defaults: UID 4038, GID 1000)
+RUN EXISTING_GRP="$(getent group "${CVEMAP_GID}" | cut -d: -f1 || true)" && \
+    if [ -n "${EXISTING_GRP}" ]; then \
+      if [ "${EXISTING_GRP}" != "cvemap" ]; then \
+        groupmod -n cvemap "${EXISTING_GRP}"; \
+      fi; \
+    else \
+      groupadd -g "${CVEMAP_GID}" cvemap; \
+    fi && \
+    EXISTING_USR="$(getent passwd "${CVEMAP_UID}" | cut -d: -f1 || true)" && \
+    if [ -n "${EXISTING_USR}" ]; then \
+      if [ "${EXISTING_USR}" != "cvemap" ]; then \
+        usermod -l cvemap -d /home/cvemap -m -g cvemap -s /bin/bash "${EXISTING_USR}"; \
+      fi; \
+    else \
+      useradd -m -d /home/cvemap -s /bin/bash -u "${CVEMAP_UID}" -g cvemap cvemap; \
+    fi
 
 # Patch TileServer-GL transitive Node deps, prune build-only node-gyp/tar, and strip npm CLI from runtime
 RUN cd /usr/src/app && \
@@ -78,18 +112,25 @@ RUN cd /usr/src/app && \
 # Copy hardened Python virtual environment (no pip/wheel attack surface)
 COPY --from=venv-builder /opt/venv /opt/venv
 
+# Configure customized shell environment for cvemap user
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} app/shell/.bash_prompt /home/cvemap/.bash_prompt
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} app/shell/.bashrc /home/cvemap/.bashrc
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} app/shell/.vimrc /home/cvemap/.vimrc
+RUN printf '[ -f ~/.bashrc ] && . ~/.bashrc\n' > /home/cvemap/.bash_profile && \
+    chown -R "${CVEMAP_UID}:${CVEMAP_GID}" /home/cvemap
+
 # Set up application & TileServer template assets under /app
 WORKDIR /app
 RUN mkdir -p /app/data /app/tileserver && \
-    chown -R 1000:1000 /app
+    chown -R "${CVEMAP_UID}:${CVEMAP_GID}" /app
 
-COPY --chown=1000:1000 app/server /app/server
-COPY --chown=1000:1000 app/static /app/static
-COPY --chown=1000:1000 app/entrypoint.sh /app/entrypoint.sh
-COPY --chown=1000:1000 tileserver/config.json /app/tileserver/config.json
-COPY --chown=1000:1000 tileserver/fonts /app/tileserver/fonts
-COPY --chown=1000:1000 tileserver/sprites /app/tileserver/sprites
-COPY --chown=1000:1000 tileserver/styles /app/tileserver/styles
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} app/server /app/server
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} app/static /app/static
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} app/entrypoint.sh /app/entrypoint.sh
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} tileserver/config.json /app/tileserver/config.json
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} tileserver/fonts /app/tileserver/fonts
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} tileserver/sprites /app/tileserver/sprites
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} tileserver/styles /app/tileserver/styles
 
 RUN chmod +x /app/entrypoint.sh && \
     ln -sfn "Noto Sans Regular" "/app/tileserver/fonts/Open Sans Regular" && \
@@ -108,7 +149,7 @@ RUN chmod +x /app/entrypoint.sh && \
       ln -sfn "$sp_dir" "/app/tileserver/sprites/$vname"; \
     done
 
-USER 1000:1000
+USER ${CVEMAP_UID}:${CVEMAP_GID}
 EXPOSE 8000 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
@@ -121,5 +162,7 @@ ENTRYPOINT ["/app/entrypoint.sh"]
 # ==============================================================================
 FROM lite AS full
 
+ARG CVEMAP_UID=4038
+ARG CVEMAP_GID=1000
 ARG DATA_SRC=app/data
-COPY --chown=1000:1000 ${DATA_SRC} /app/data
+COPY --chown=${CVEMAP_UID}:${CVEMAP_GID} ${DATA_SRC} /app/data

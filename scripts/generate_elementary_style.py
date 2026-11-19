@@ -567,8 +567,8 @@ def build_themed_style(
     light_tpl: dict,
     name: str,
     sprite_name: str,
-    country_colors: list,
-    state_colors: list,
+    country_colors: list | None,
+    state_colors: list | None,
     palette: dict[str, str],
     bold_font: str,
     reg_font: str,
@@ -577,6 +577,8 @@ def build_themed_style(
     water_pattern: str | None = None,
     strip_uppercase: bool = False,
     font_scale: float = 1.0,
+    use_choropleth: bool = True,
+    hide_road_labels: bool = False,
 ) -> dict:
     style = copy.deepcopy(light_tpl)
     style["name"] = name
@@ -584,8 +586,13 @@ def build_themed_style(
     style["sprite"] = sprite_name
     style["sources"] = {
         "protomaps": {"type": "vector", "url": "mbtiles://planet"},
-        "choropleth": {"type": "vector", "url": "pmtiles://elementary_choropleth", "maxzoom": 7},
     }
+    if use_choropleth:
+        style["sources"]["choropleth"] = {
+            "type": "vector",
+            "url": "pmtiles://elementary_choropleth",
+            "maxzoom": 7,
+        }
 
     new_layers: list[dict] = []
     for lyr in style.get("layers", []):
@@ -602,39 +609,41 @@ def build_themed_style(
         if lid == "earth":
             paint["fill-color"] = palette["earth"]
             new_layers.append(lyr)
-            new_layers.append(
-                {
-                    "id": "choropleth_countries",
-                    "type": "fill",
-                    "source": "choropleth",
-                    "source-layer": "choropleth",
-                    "filter": ["==", ["get", "kind"], "country"],
-                    "paint": {
-                        "fill-color": country_colors,
-                        "fill-opacity": [
-                            "interpolate", ["linear"], ["zoom"],
-                            0, 0.92, 4, 0.88, 6, 0.72, 9, 0.45, 12, 0.28, 15, 0.18,
-                        ],
-                    },
-                }
-            )
-            new_layers.append(
-                {
-                    "id": "choropleth_regions",
-                    "type": "fill",
-                    "source": "choropleth",
-                    "source-layer": "choropleth",
-                    "minzoom": 2,
-                    "filter": ["==", ["get", "kind"], "region"],
-                    "paint": {
-                        "fill-color": state_colors,
-                        "fill-opacity": [
-                            "interpolate", ["linear"], ["zoom"],
-                            2, 0.0, 2.8, 0.80, 5, 0.82, 7.5, 0.60, 10, 0.35, 13, 0.20,
-                        ],
-                    },
-                }
-            )
+            if use_choropleth and country_colors is not None:
+                new_layers.append(
+                    {
+                        "id": "choropleth_countries",
+                        "type": "fill",
+                        "source": "choropleth",
+                        "source-layer": "choropleth",
+                        "filter": ["==", ["get", "kind"], "country"],
+                        "paint": {
+                            "fill-color": country_colors,
+                            "fill-opacity": [
+                                "interpolate", ["linear"], ["zoom"],
+                                0, 0.92, 4, 0.88, 6, 0.72, 9, 0.45, 12, 0.28, 15, 0.18,
+                            ],
+                        },
+                    }
+                )
+            if use_choropleth and state_colors is not None:
+                new_layers.append(
+                    {
+                        "id": "choropleth_regions",
+                        "type": "fill",
+                        "source": "choropleth",
+                        "source-layer": "choropleth",
+                        "minzoom": 2,
+                        "filter": ["==", ["get", "kind"], "region"],
+                        "paint": {
+                            "fill-color": state_colors,
+                            "fill-opacity": [
+                                "interpolate", ["linear"], ["zoom"],
+                                2, 0.0, 2.8, 0.80, 5, 0.82, 7.5, 0.60, 10, 0.35, 13, 0.20,
+                            ],
+                        },
+                    }
+                )
             if urban_fill_color:
                 new_layers.append(
                     {
@@ -665,7 +674,7 @@ def build_themed_style(
             continue
 
         if lid == "landcover":
-            lyr["minzoom"] = 5
+            lyr["minzoom"] = 5 if use_choropleth else 0
             paint["fill-color"] = [
                 "match", ["get", "pmap:kind"],
                 "grassland", palette["lc_grass"],
@@ -676,11 +685,17 @@ def build_themed_style(
                 "scrub", palette["lc_scrub"],
                 palette["lc_forest"],
             ]
-            paint["fill-opacity"] = ["interpolate", ["linear"], ["zoom"], 5, 0.0, 6.2, 0.45, 8.0, 0.0]
+            paint["fill-opacity"] = (
+                ["interpolate", ["linear"], ["zoom"], 5, 0.0, 6.2, 0.45, 8.0, 0.0]
+                if use_choropleth
+                else ["interpolate", ["linear"], ["zoom"], 0, 0.85, 6, 0.88, 10, 0.72, 13, 0.55]
+            )
             new_layers.append(lyr)
             continue
 
         if lid.startswith("landuse_park"):
+            if not use_choropleth:
+                lyr["minzoom"] = min(int(lyr.get("minzoom", 6)), 4)
             paint["fill-color"] = [
                 "case",
                 ["in", ["get", "pmap:kind"], ["literal", ["national_park", "park", "cemetery", "protected_area", "nature_reserve", "forest", "golf_course"]]],
@@ -697,7 +712,11 @@ def build_themed_style(
                 palette["military"],
                 palette["earth"],
             ]
-            paint["fill-opacity"] = ["interpolate", ["linear"], ["zoom"], 6, 0.0, 9, 0.65, 12, 0.88]
+            paint["fill-opacity"] = (
+                ["interpolate", ["linear"], ["zoom"], 6, 0.0, 9, 0.65, 12, 0.88]
+                if use_choropleth
+                else ["interpolate", ["linear"], ["zoom"], 4, 0.55, 7, 0.78, 12, 0.88]
+            )
             new_layers.append(lyr)
             continue
 
@@ -836,6 +855,8 @@ def build_themed_style(
             continue
 
         if ltype == "symbol" and isinstance(layout, dict):
+            if hide_road_labels and lid in ("roads_labels_major", "roads_labels_minor", "roads_shields", "address_label"):
+                layout["visibility"] = "none"
             if lid == "pois":
                 paint["text-color"] = palette["poi_text"]
             _apply_custom_fonts(
@@ -1219,6 +1240,64 @@ PALADIN_PALETTE = {
     "label_halo": "#0b0d0f",
 }
 
+# Snazzy Maps #7 "Icy Blue": vibrant azure water, bright frost land, crisp glacial terrain contrast,
+# lightened simplified roads, road labels hidden, Exo 2 geometric typography
+ICY_BLUE_PALETTE = {
+    "water": "#5ba6f7",
+    "water_outline": "#2e75c9",
+    "river": "#4d99ef",
+    "earth": "#dceeff",
+    "lc_grass": "#b4d7fa",
+    "lc_barren": "#f0f7ff",
+    "lc_urban": "#c2defa",
+    "lc_farm": "#cce4fd",
+    "lc_scrub": "#9ec8f5",
+    "lc_forest": "#8ec0f4",
+    "park": "#8ec0f4",
+    "wood": "#82b8f2",
+    "scrub": "#a8d0f8",
+    "glacier": "#ffffff",
+    "sand": "#e6f2ff",
+    "military": "#b0d1f5",
+    "hospital": "#cbe2fa",
+    "industrial": "#bddaf8",
+    "school": "#cfe5fb",
+    "zoo": "#99c8f6",
+    "aerodrome": "#c6dff9",
+    "runway": "#f5faff",
+    "pedestrian": "#e8f3ff",
+    "pier": "#cde3fb",
+    "buildings": "#c2defa",
+    "buildings_outline": "#8bb9eb",
+    "tunnel": "#d4e8fd",
+    "highway": "#ffffff",
+    "highway_casing": "#7eb3eb",
+    "major": "#fafdff",
+    "major_casing": "#93c1f2",
+    "link": "#f4f9ff",
+    "link_casing": "#a4ccf5",
+    "minor_a": "#f0f7ff",
+    "minor_b": "#ffffff",
+    "minor_casing": "#b5d6f7",
+    "railway": "#6da6e3",
+    "boundary_country_casing": "#d6ebff",
+    "boundary_country_casing_opacity": 0.72,
+    "boundary_country": "#102a49",
+    "boundary_state_casing": "#e2f1ff",
+    "boundary_state_casing_opacity": 0.58,
+    "boundary_state": "#4a82bd",
+    "country_label": "#0b1c30",
+    "state_label": "#153252",
+    "city_label": "#0b1c30",
+    "subplace_label": "#1c3f63",
+    "water_label": "#134780",
+    "water_halo": "#92c8fc",
+    "road_label": "#1c3f63",
+    "shield_label": "#0b1c30",
+    "poi_text": "#173759",
+    "label_halo": "#ffffff",
+}
+
 
 def main() -> None:
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -1280,6 +1359,20 @@ def main() -> None:
             italic_font="Orbitron Italic",
             urban_fill_color="#68727c",
             water_pattern="mgs_water_texture",
+        ),
+        "icy_blue": build_themed_style(
+            light_tpl=light_tpl,
+            name="Icy Blue",
+            sprite_name="v4/light",
+            country_colors=None,
+            state_colors=None,
+            palette=ICY_BLUE_PALETTE,
+            bold_font="Exo 2 Bold",
+            reg_font="Exo 2 Regular",
+            italic_font="Exo 2 Italic",
+            strip_uppercase=True,
+            use_choropleth=False,
+            hide_road_labels=True,
         ),
     }
 

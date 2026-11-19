@@ -22,6 +22,10 @@ for CVEMAP custom themes:
      - Orbitron Bold
      - Orbitron Regular
      - Orbitron Italic
+  6. Icy Blue (SIL OFL 1.1 "Exo 2" sleek geometric/crystalline sans):
+     - Exo 2 Bold
+     - Exo 2 Regular
+     - Exo 2 Italic
 
 For Unicode code points outside a font's character map (such as CJK, Arabic,
 Cyrillic, Devanagari, etc.), glyphs seamlessly fall back to the bundled Noto Sans
@@ -320,6 +324,7 @@ def main() -> None:
     wasteland_font_dir = os.path.join(ts_fonts, "wasteland-fonts")
     tolkien_font_dir = os.path.join(ts_fonts, "tolkien-fonts")
     paladin_font_dir = os.path.join(ts_fonts, "paladin-fonts")
+    icy_blue_font_dir = os.path.join(ts_fonts, "icy-blue-fonts")
 
     specs = [
         # Elementary (Crayon Libre - CC0 Public Domain)
@@ -446,6 +451,31 @@ def main() -> None:
             0,
             0,
             0.16,
+        ),
+        # Icy Blue (Exo 2 sleek geometric sans - SIL OFL 1.1)
+        (
+            "Exo 2 Bold",
+            os.path.join(icy_blue_font_dir, "Exo2-Bold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Exo 2 Regular",
+            os.path.join(icy_blue_font_dir, "Exo2-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Exo 2 Italic",
+            os.path.join(icy_blue_font_dir, "Exo2-Italic.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.0,
         ),
     ]
 

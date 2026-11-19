@@ -1,0 +1,37 @@
+# CVEMAP custom shell prompt & ASCII boulder greeting
+export TERM="${TERM:-xterm-256color}"
+
+# Show banner only in interactive shells
+case $- in
+  *i*)
+    printf '%b\n' \
+      '' \
+      '\e[38;5;250m          _.----._         \e[38;5;51m   ______ _    __ ______ __  ___ ___    ____\e[0m' \
+      '\e[38;5;248m        .\x27  /   \\ \x27.       \e[38;5;45m  / ____/| |  / // ____//  |/  //   |  / __ \\\e[0m' \
+      '\e[38;5;246m       /  .\x27  _.-\x27  \\      \e[38;5;39m / /     | | / // __/  / /|_/ // /| | / /_/ /\e[0m' \
+      '\e[38;5;244m      |  /  .\x27 \\     |     \e[38;5;33m/ /___   | |/ // /___ / /  / // ___ |/ ____/\e[0m' \
+      '\e[38;5;242m      |  \\  \\   \x27.  /      \e[38;5;27m\\____/   |___//_____//_/  /_//_/  |_/_/\e[0m' \
+      '\e[38;5;240m       \\  \x27._\\___/ /\e[0m' \
+      '\e[38;5;239m        \x27._     _.\x27        \e[38;5;159mThe gods had condemned Sisyphus to ceaselessly rolling a rock\e[0m' \
+      '\e[38;5;238m      _____\x27---\x27_____      \e[38;5;159mto the top of a mountain, whence the stone would fall back of\e[0m' \
+      '\e[38;5;117m     /   \e[38;5;75m/\e[38;5;117m     \e[38;5;75m\\\e[38;5;117m     \\     \e[38;5;159mits own weight. They had thought with some reason that there is\e[0m' \
+      '\e[38;5;75m    /  .\x27\e[38;5;68m   /\\  \e[38;5;75m\x27.    \\    \e[38;5;159mno more dreadful punishment than futile and hopeless labor.\e[0m' \
+      '\e[38;5;68m   / .\x27 \e[38;5;61m  /    \\  \e[38;5;68m\x27.   \\   \e[38;5;81m  -- Albert Camus\e[0m'
+    printf "\e[38;5;111m                           User:\e[0m \e[38;5;159m%s\e[0m (\e[38;5;81m%s:%s\e[0m)  \e[38;5;111m|\e[0m  \e[38;5;111mData:\e[0m \e[38;5;159m/app/data\e[0m  \e[38;5;111m|\e[0m  \e[38;5;111mPorts:\e[0m \e[38;5;159m8000 / 8080\e[0m\n\n" \
+      "$(id -un)" "$(id -u)" "$(id -g)"
+    ;;
+esac
+
+# Multi-segment color-on-color boulder & icy-blue prompt
+__cvemap_base_ps1="\[\e[48;5;24;38;5;159m\] (O) \u@\h \[\e[48;5;238;38;5;117m\] \w \[\e[0m\e[38;5;81m\] \$ \[\e[0m\]"
+PS1="${__cvemap_base_ps1}"
+
+__cvemap_prompt() {
+  local rc=$?
+  if [ "$rc" -ne 0 ]; then
+    PS1="\[\e[48;5;52;38;5;210m\] !${rc} \[\e[0m\]${__cvemap_base_ps1}"
+  else
+    PS1="${__cvemap_base_ps1}"
+  fi
+}
+PROMPT_COMMAND=__cvemap_prompt
