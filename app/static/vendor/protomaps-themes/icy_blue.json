@@ -63,11 +63,11 @@
             "zoom"
           ],
           0,
-          0.85,
+          0.96,
           6,
-          0.88,
-          10,
-          0.72,
+          0.94,
+          9,
+          0.78,
           13,
           0.55
         ]
@@ -91,10 +91,20 @@
         "golf_course",
         "wood",
         "scrub",
+        "heath",
         "grassland",
         "grass",
+        "meadow",
+        "wetland",
+        "marsh",
+        "farmland",
+        "orchard",
+        "vineyard",
+        "bare_rock",
+        "scree",
         "glacier",
         "sand",
+        "beach",
         "military",
         "naval_base",
         "airfield"
@@ -108,12 +118,12 @@
           [
             "zoom"
           ],
-          4,
-          0.55,
+          3,
+          0.6,
           7,
-          0.78,
+          0.85,
           12,
-          0.88
+          0.92
         ],
         "fill-color": [
           "case",
@@ -156,12 +166,60 @@
               "literal",
               [
                 "scrub",
+                "heath"
+              ]
+            ]
+          ],
+          "#9ec8f5",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
                 "grassland",
-                "grass"
+                "grass",
+                "meadow",
+                "wetland",
+                "marsh"
               ]
             ]
           ],
           "#a8d0f8",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "farmland",
+                "orchard",
+                "vineyard"
+              ]
+            ]
+          ],
+          "#cce4fd",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "bare_rock",
+                "scree"
+              ]
+            ]
+          ],
+          "#f0f7ff",
           [
             "==",
             [
@@ -172,12 +230,18 @@
           ],
           "#ffffff",
           [
-            "==",
+            "in",
             [
               "get",
               "pmap:kind"
             ],
-            "sand"
+            [
+              "literal",
+              [
+                "sand",
+                "beach"
+              ]
+            ]
           ],
           "#e6f2ff",
           [
@@ -199,7 +263,7 @@
           "#dceeff"
         ]
       },
-      "minzoom": 4
+      "minzoom": 3
     },
     {
       "id": "landuse_park_landcover",
@@ -218,10 +282,20 @@
         "golf_course",
         "wood",
         "scrub",
+        "heath",
         "grassland",
         "grass",
+        "meadow",
+        "wetland",
+        "marsh",
+        "farmland",
+        "orchard",
+        "vineyard",
+        "bare_rock",
+        "scree",
         "glacier",
         "sand",
+        "beach",
         "military",
         "naval_base",
         "airfield"
@@ -235,12 +309,12 @@
           [
             "zoom"
           ],
-          4,
-          0.55,
+          3,
+          0.6,
           7,
-          0.78,
+          0.85,
           12,
-          0.88
+          0.92
         ],
         "fill-color": [
           "case",
@@ -283,12 +357,60 @@
               "literal",
               [
                 "scrub",
+                "heath"
+              ]
+            ]
+          ],
+          "#9ec8f5",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
                 "grassland",
-                "grass"
+                "grass",
+                "meadow",
+                "wetland",
+                "marsh"
               ]
             ]
           ],
           "#a8d0f8",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "farmland",
+                "orchard",
+                "vineyard"
+              ]
+            ]
+          ],
+          "#cce4fd",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "bare_rock",
+                "scree"
+              ]
+            ]
+          ],
+          "#f0f7ff",
           [
             "==",
             [
@@ -299,12 +421,18 @@
           ],
           "#ffffff",
           [
-            "==",
+            "in",
             [
               "get",
               "pmap:kind"
             ],
-            "sand"
+            [
+              "literal",
+              [
+                "sand",
+                "beach"
+              ]
+            ]
           ],
           "#e6f2ff",
           [
@@ -326,7 +454,7 @@
           "#dceeff"
         ]
       },
-      "minzoom": 4
+      "minzoom": 3
     },
     {
       "id": "landuse_park_natural",
@@ -345,10 +473,20 @@
         "golf_course",
         "wood",
         "scrub",
+        "heath",
         "grassland",
         "grass",
+        "meadow",
+        "wetland",
+        "marsh",
+        "farmland",
+        "orchard",
+        "vineyard",
+        "bare_rock",
+        "scree",
         "glacier",
         "sand",
+        "beach",
         "military",
         "naval_base",
         "airfield"
@@ -362,12 +500,12 @@
           [
             "zoom"
           ],
-          4,
-          0.55,
+          3,
+          0.6,
           7,
-          0.78,
+          0.85,
           12,
-          0.88
+          0.92
         ],
         "fill-color": [
           "case",
@@ -410,12 +548,60 @@
               "literal",
               [
                 "scrub",
+                "heath"
+              ]
+            ]
+          ],
+          "#9ec8f5",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
                 "grassland",
-                "grass"
+                "grass",
+                "meadow",
+                "wetland",
+                "marsh"
               ]
             ]
           ],
           "#a8d0f8",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "farmland",
+                "orchard",
+                "vineyard"
+              ]
+            ]
+          ],
+          "#cce4fd",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "bare_rock",
+                "scree"
+              ]
+            ]
+          ],
+          "#f0f7ff",
           [
             "==",
             [
@@ -426,12 +612,18 @@
           ],
           "#ffffff",
           [
-            "==",
+            "in",
             [
               "get",
               "pmap:kind"
             ],
-            "sand"
+            [
+              "literal",
+              [
+                "sand",
+                "beach"
+              ]
+            ]
           ],
           "#e6f2ff",
           [
@@ -453,7 +645,7 @@
           "#dceeff"
         ]
       },
-      "minzoom": 4
+      "minzoom": 3
     },
     {
       "id": "landuse_urban_green",
@@ -2899,7 +3091,8 @@
       "paint": {
         "text-color": "#1c3f63",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -3795,7 +3988,8 @@
       "paint": {
         "text-color": "#134780",
         "text-halo-color": "#92c8fc",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -3821,7 +4015,9 @@
           "Exo 2 Regular"
         ]
       },
-      "paint": {}
+      "paint": {
+        "text-halo-blur": 0.15
+      }
     },
     {
       "id": "roads_labels_minor",
@@ -4721,7 +4917,8 @@
       "paint": {
         "text-color": "#1c3f63",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -5631,7 +5828,8 @@
       "paint": {
         "text-color": "#134780",
         "text-halo-width": 1.8,
-        "text-halo-color": "#92c8fc"
+        "text-halo-color": "#92c8fc",
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -6525,7 +6723,8 @@
       "paint": {
         "text-color": "#1c3f63",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.6
+        "text-halo-width": 1.6,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -7434,7 +7633,8 @@
       "paint": {
         "text-color": "#134780",
         "text-halo-color": "#92c8fc",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -7535,7 +7735,8 @@
         "visibility": "none"
       },
       "paint": {
-        "text-color": "#0b1c30"
+        "text-color": "#0b1c30",
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -8435,7 +8636,8 @@
       "paint": {
         "text-color": "#1c3f63",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -9509,7 +9711,8 @@
       "paint": {
         "text-color": "#173759",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.6
+        "text-halo-width": 1.6,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -10451,7 +10654,8 @@
       "paint": {
         "text-color": "#1c3f63",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -11379,7 +11583,8 @@
       "paint": {
         "text-color": "#153252",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       },
       "minzoom": 3
     },
@@ -12513,7 +12718,8 @@
       "paint": {
         "text-color": "#0b1c30",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 2.0
+        "text-halo-width": 2.0,
+        "text-halo-blur": 0.15
       },
       "minzoom": 3
     },
@@ -12682,7 +12888,8 @@
       "paint": {
         "text-color": "#0b1c30",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 2.2
+        "text-halo-width": 2.2,
+        "text-halo-blur": 0.15
       }
     }
   ],

@@ -18,6 +18,7 @@ TILESERVER_STYLES = [
     "bio",
     "black",
     "black_and_white",
+    "blueprint",
     "dark",
     "dusk_rose",
     "elementary",
@@ -25,14 +26,17 @@ TILESERVER_STYLES = [
     "grayscale",
     "icy_blue",
     "iris_bloom",
+    "jurassic",
     "light",
     "matrix",
     "paladin",
     "rainforest",
     "seafoam",
     "sol",
+    "synthwave",
     "tolkien",
     "wasteland",
+    "western",
     "white",
 ]
 
@@ -91,7 +95,18 @@ def make_dataset_style_id(dataset_name: str, style_id: str) -> str:
 
 
 def format_style_title(style_id: str) -> str:
-    if style_id in ("elementary", "icy_blue", "matrix", "paladin", "tolkien", "wasteland"):
+    if style_id in (
+        "blueprint",
+        "elementary",
+        "icy_blue",
+        "jurassic",
+        "matrix",
+        "paladin",
+        "synthwave",
+        "tolkien",
+        "wasteland",
+        "western",
+    ):
         return style_id.replace("_", " ").title()
     if style_id in OPENMAPTILES_STYLE_DEFS:
         return OPENMAPTILES_STYLE_DEFS[style_id]["title"]

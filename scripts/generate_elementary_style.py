@@ -170,6 +170,66 @@ PALADIN_STATE_COLORS = [
     "#31363b",
 ]
 
+BLUEPRINT_COUNTRY_COLORS = [
+    "match",
+    ["get", "color_id"],
+    1, "#124378",
+    2, "#164d87",
+    3, "#1b5796",
+    4, "#144880",
+    5, "#1f60a3",
+    6, "#18528f",
+    7, "#2369b0",
+    8, "#0f3c6e",
+    9, "#1a5594",
+    "#124378",
+]
+
+BLUEPRINT_STATE_COLORS = [
+    "match",
+    ["get", "color_id"],
+    1, "#14477d",
+    2, "#18518c",
+    3, "#1d5b9c",
+    4, "#164c85",
+    5, "#2164a8",
+    6, "#1a5694",
+    7, "#256db5",
+    8, "#114073",
+    9, "#1c5999",
+    "#14477d",
+]
+
+SYNTHWAVE_COUNTRY_COLORS = [
+    "match",
+    ["get", "color_id"],
+    1, "#1f0c3d",  # Deep Outrun Indigo
+    2, "#2e1154",  # Neon Violet
+    3, "#401469",  # Cyber Purple
+    4, "#521675",  # Sunset Magenta-Violet
+    5, "#24164d",  # Arcade Twilight Blue-Violet
+    6, "#63197d",  # Electric Plum
+    7, "#36125c",  # Royal Synth Purple
+    8, "#751c82",  # Hot Orchid Purple
+    9, "#1a1240",  # Midnight Synth Navy
+    "#1f0c3d",
+]
+
+SYNTHWAVE_STATE_COLORS = [
+    "match",
+    ["get", "color_id"],
+    1, "#230e42",
+    2, "#321359",
+    3, "#44166e",
+    4, "#57187a",
+    5, "#281852",
+    6, "#681b82",
+    7, "#3a1461",
+    8, "#7a1e87",
+    9, "#1e1445",
+    "#230e42",
+]
+
 
 def build_elementary_style(light_tpl: dict) -> dict:
     style = copy.deepcopy(light_tpl)
@@ -446,21 +506,53 @@ def _make_tolkien_wave_tile(size: int = 64) -> Image.Image:
     return Image.fromarray(rgba, mode="RGBA")
 
 
+def _make_western_water_tile(size: int = 64) -> Image.Image:
+    """Create a rich Royal Blue water texture tile."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float64)
+    u = 2.0 * np.pi * x / size
+    v = 2.0 * np.pi * y / size
+
+    undulation = 0.40 * np.sin(4.0 * u + 0.5 * np.sin(2.0 * v)) + 0.20 * np.cos(6.0 * u - 2.0 * v)
+    wave = np.sin(12.0 * v + 1.2 * undulation)
+
+    # Rich Royal Blue base (#2458c2 -> 36, 88, 194)
+    r = np.full((size, size), 36.0)
+    g = np.full((size, size), 88.0)
+    b = np.full((size, size), 194.0)
+
+    r += wave * 6.0
+    g += wave * 8.0
+    b += wave * 11.0
+
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    rgba[..., 0] = np.clip(r, 0, 255).astype(np.uint8)
+    rgba[..., 1] = np.clip(g, 0, 255).astype(np.uint8)
+    rgba[..., 2] = np.clip(b, 0, 255).astype(np.uint8)
+    rgba[..., 3] = 255
+    return Image.fromarray(rgba, mode="RGBA")
+
+
 def update_tolkien_water_sprite(repo_root: str) -> None:
-    """Idempotently add the 'tolkien_water_waves' seamless pattern sprite to v4/light sprite sheets."""
+    """Idempotently add 'tolkien_water_waves' and 'western_water_waves' to v4/light sprites."""
     sprite_dirs = [
         os.path.join(repo_root, "tileserver", "sprites", "v4"),
         os.path.join(repo_root, "app", "static", "vendor", "protomaps-assets", "sprites", "v4"),
     ]
-    tile_1x = _make_tolkien_wave_tile(64)
-    tile_2x = _make_tolkien_wave_tile(128)
+    tiles_1x = [
+        ("tolkien_water_waves", 0, _make_tolkien_wave_tile(64)),
+        ("western_water_waves", 64, _make_western_water_tile(64)),
+    ]
+    tiles_2x = [
+        ("tolkien_water_waves", 0, _make_tolkien_wave_tile(128)),
+        ("western_water_waves", 128, _make_western_water_tile(128)),
+    ]
 
     for sdir in sprite_dirs:
         if not os.path.isdir(sdir):
             continue
-        for suffix, scale, tile_img, base_y in [
-            ("", 1, tile_1x, 114),
-            ("@2x", 2, tile_2x, 228),
+        for suffix, scale, tile_list, base_y in [
+            ("", 1, tiles_1x, 114),
+            ("@2x", 2, tiles_2x, 228),
         ]:
             png_path = os.path.join(sdir, f"light{suffix}.png")
             json_path = os.path.join(sdir, f"light{suffix}.json")
@@ -469,22 +561,23 @@ def update_tolkien_water_sprite(repo_root: str) -> None:
 
             with open(json_path, "r") as f:
                 meta = json.load(f)
+            meta.pop("nautical_water_lines", None)
 
             tsize = 64 * scale
             im = Image.open(png_path).convert("RGBA")
             new_h = max(im.height, base_y + tsize)
             canvas = Image.new("RGBA", (im.width, new_h), (0, 0, 0, 0))
             canvas.paste(im, (0, 0))
-            canvas.paste(tile_img, (0, base_y))
+            for name, x_off, tile_img in tile_list:
+                canvas.paste(tile_img, (x_off, base_y))
+                meta[name] = {
+                    "x": x_off,
+                    "y": base_y,
+                    "width": tsize,
+                    "height": tsize,
+                    "pixelRatio": scale,
+                }
             canvas.save(png_path)
-
-            meta["tolkien_water_waves"] = {
-                "x": 0,
-                "y": base_y,
-                "width": tsize,
-                "height": tsize,
-                "pixelRatio": scale,
-            }
             with open(json_path, "w") as f:
                 json.dump(meta, f, separators=(",", ":"))
 
@@ -520,21 +613,77 @@ def _make_mgs_water_tile(size: int = 64) -> Image.Image:
     return Image.fromarray(rgba, mode="RGBA")
 
 
+def _make_blueprint_grid_tile(size: int = 64) -> Image.Image:
+    """Create a seamless engineering cyanotype blueprint grid water texture tile."""
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    # Deep cyanotype Prussian blue (#0c335e -> 12, 51, 94)
+    rgba[..., 0] = 12
+    rgba[..., 1] = 51
+    rgba[..., 2] = 94
+    rgba[..., 3] = 255
+
+    step_minor = max(1, size // 8)
+    step_major = max(1, size // 2)
+    # Subtle minor grid lines (#113e70)
+    rgba[::step_minor, :, 0] = 17
+    rgba[::step_minor, :, 1] = 62
+    rgba[::step_minor, :, 2] = 112
+    rgba[:, ::step_minor, 0] = 17
+    rgba[:, ::step_minor, 1] = 62
+    rgba[:, ::step_minor, 2] = 112
+    # Crisp major drafting grid lines (#19528f)
+    rgba[::step_major, :, 0] = 25
+    rgba[::step_major, :, 1] = 82
+    rgba[::step_major, :, 2] = 143
+    rgba[:, ::step_major, 0] = 25
+    rgba[:, ::step_major, 1] = 82
+    rgba[:, ::step_major, 2] = 143
+    return Image.fromarray(rgba, mode="RGBA")
+
+
+def _make_synthwave_grid_tile(size: int = 64) -> Image.Image:
+    """Create a seamless 1980s Outrun neon-violet laser grid water texture tile."""
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    # Deep midnight arcade violet (#0e0621 -> 14, 6, 33)
+    rgba[..., 0] = 14
+    rgba[..., 1] = 6
+    rgba[..., 2] = 33
+    rgba[..., 3] = 255
+
+    step = max(1, size // 4)
+    # Subtle glowing magenta-violet synth grid lines (#2a1052 -> 42, 16, 82)
+    rgba[::step, :, 0] = 42
+    rgba[::step, :, 1] = 16
+    rgba[::step, :, 2] = 82
+    rgba[:, ::step, 0] = 34
+    rgba[:, ::step, 1] = 14
+    rgba[:, ::step, 2] = 72
+    return Image.fromarray(rgba, mode="RGBA")
+
+
 def update_mgs_water_sprite(repo_root: str) -> None:
-    """Idempotently add the 'mgs_water_texture' seamless pattern sprite to v4/dark sprite sheets."""
+    """Idempotently add 'mgs_water_texture', 'blueprint_grid', and 'synthwave_grid' to v4/dark sprite sheets."""
     sprite_dirs = [
         os.path.join(repo_root, "tileserver", "sprites", "v4"),
         os.path.join(repo_root, "app", "static", "vendor", "protomaps-assets", "sprites", "v4"),
     ]
-    tile_1x = _make_mgs_water_tile(64)
-    tile_2x = _make_mgs_water_tile(128)
+    tiles_1x = [
+        ("mgs_water_texture", 0, _make_mgs_water_tile(64)),
+        ("blueprint_grid", 64, _make_blueprint_grid_tile(64)),
+        ("synthwave_grid", 128, _make_synthwave_grid_tile(64)),
+    ]
+    tiles_2x = [
+        ("mgs_water_texture", 0, _make_mgs_water_tile(128)),
+        ("blueprint_grid", 128, _make_blueprint_grid_tile(128)),
+        ("synthwave_grid", 256, _make_synthwave_grid_tile(128)),
+    ]
 
     for sdir in sprite_dirs:
         if not os.path.isdir(sdir):
             continue
-        for suffix, scale, tile_img, base_y in [
-            ("", 1, tile_1x, 114),
-            ("@2x", 2, tile_2x, 228),
+        for suffix, scale, tile_list, base_y in [
+            ("", 1, tiles_1x, 114),
+            ("@2x", 2, tiles_2x, 228),
         ]:
             png_path = os.path.join(sdir, f"dark{suffix}.png")
             json_path = os.path.join(sdir, f"dark{suffix}.json")
@@ -549,16 +698,16 @@ def update_mgs_water_sprite(repo_root: str) -> None:
             new_h = max(im.height, base_y + tsize)
             canvas = Image.new("RGBA", (im.width, new_h), (0, 0, 0, 0))
             canvas.paste(im, (0, 0))
-            canvas.paste(tile_img, (0, base_y))
+            for name, x_off, tile_img in tile_list:
+                canvas.paste(tile_img, (x_off, base_y))
+                meta[name] = {
+                    "x": x_off,
+                    "y": base_y,
+                    "width": tsize,
+                    "height": tsize,
+                    "pixelRatio": scale,
+                }
             canvas.save(png_path)
-
-            meta["mgs_water_texture"] = {
-                "x": 0,
-                "y": base_y,
-                "width": tsize,
-                "height": tsize,
-                "pixelRatio": scale,
-            }
             with open(json_path, "w") as f:
                 json.dump(meta, f, separators=(",", ":"))
 
@@ -688,25 +837,61 @@ def build_themed_style(
             paint["fill-opacity"] = (
                 ["interpolate", ["linear"], ["zoom"], 5, 0.0, 6.2, 0.45, 8.0, 0.0]
                 if use_choropleth
-                else ["interpolate", ["linear"], ["zoom"], 0, 0.85, 6, 0.88, 10, 0.72, 13, 0.55]
+                else ["interpolate", ["linear"], ["zoom"], 0, 0.96, 6, 0.94, 9, 0.78, 13, 0.55]
             )
             new_layers.append(lyr)
             continue
 
         if lid.startswith("landuse_park"):
             if not use_choropleth:
-                lyr["minzoom"] = min(int(lyr.get("minzoom", 6)), 4)
+                lyr["minzoom"] = min(int(lyr.get("minzoom", 6)), 3)
+                lyr["filter"] = [
+                    "in",
+                    "pmap:kind",
+                    "national_park",
+                    "park",
+                    "cemetery",
+                    "protected_area",
+                    "nature_reserve",
+                    "forest",
+                    "golf_course",
+                    "wood",
+                    "scrub",
+                    "heath",
+                    "grassland",
+                    "grass",
+                    "meadow",
+                    "wetland",
+                    "marsh",
+                    "farmland",
+                    "orchard",
+                    "vineyard",
+                    "bare_rock",
+                    "scree",
+                    "glacier",
+                    "sand",
+                    "beach",
+                    "military",
+                    "naval_base",
+                    "airfield",
+                ]
             paint["fill-color"] = [
                 "case",
                 ["in", ["get", "pmap:kind"], ["literal", ["national_park", "park", "cemetery", "protected_area", "nature_reserve", "forest", "golf_course"]]],
                 palette["park"],
                 ["==", ["get", "pmap:kind"], "wood"],
                 palette["wood"],
-                ["in", ["get", "pmap:kind"], ["literal", ["scrub", "grassland", "grass"]]],
+                ["in", ["get", "pmap:kind"], ["literal", ["scrub", "heath"]]],
+                palette.get("lc_scrub", palette["scrub"]),
+                ["in", ["get", "pmap:kind"], ["literal", ["grassland", "grass", "meadow", "wetland", "marsh"]]],
                 palette["scrub"],
+                ["in", ["get", "pmap:kind"], ["literal", ["farmland", "orchard", "vineyard"]]],
+                palette["lc_farm"],
+                ["in", ["get", "pmap:kind"], ["literal", ["bare_rock", "scree"]]],
+                palette["lc_barren"],
                 ["==", ["get", "pmap:kind"], "glacier"],
                 palette["glacier"],
-                ["==", ["get", "pmap:kind"], "sand"],
+                ["in", ["get", "pmap:kind"], ["literal", ["sand", "beach"]]],
                 palette["sand"],
                 ["in", ["get", "pmap:kind"], ["literal", ["military", "naval_base", "airfield"]]],
                 palette["military"],
@@ -715,7 +900,7 @@ def build_themed_style(
             paint["fill-opacity"] = (
                 ["interpolate", ["linear"], ["zoom"], 6, 0.0, 9, 0.65, 12, 0.88]
                 if use_choropleth
-                else ["interpolate", ["linear"], ["zoom"], 4, 0.55, 7, 0.78, 12, 0.88]
+                else ["interpolate", ["linear"], ["zoom"], 3, 0.60, 7, 0.85, 12, 0.92]
             )
             new_layers.append(lyr)
             continue
@@ -917,6 +1102,8 @@ def _apply_custom_fonts(
 
     if strip_uppercase and "text-transform" in layout:
         del layout["text-transform"]
+
+    paint["text-halo-blur"] = 0.15
 
     def _s(val: float) -> int:
         return int(round(val * font_scale))
@@ -1298,6 +1485,239 @@ ICY_BLUE_PALETTE = {
     "label_halo": "#ffffff",
 }
 
+BLUEPRINT_PALETTE = {
+    "water": "#0c335e",
+    "water_outline": "#e6f5ff",
+    "river": "#2b78c2",
+    "earth": "#144880",
+    "lc_grass": "#174f8a",
+    "lc_barren": "#1c5a99",
+    "lc_urban": "#246bb3",
+    "lc_farm": "#195391",
+    "lc_scrub": "#1b5694",
+    "lc_forest": "#13457a",
+    "park": "#164d87",
+    "wood": "#124275",
+    "scrub": "#1a5591",
+    "glacier": "#d9f0ff",
+    "sand": "#2b73b8",
+    "military": "#1e62a8",
+    "hospital": "#2876c4",
+    "industrial": "#1f5f9e",
+    "school": "#2570ba",
+    "zoo": "#1c5a99",
+    "aerodrome": "#2265a8",
+    "runway": "#9cd6ff",
+    "pedestrian": "#2870b8",
+    "pier": "#3682cc",
+    "buildings": "#2975bf",
+    "buildings_outline": "#e6f5ff",
+    "tunnel": "#103c6b",
+    "highway": "#ffffff",
+    "highway_casing": "#0a2a4d",
+    "major": "#b8e3ff",
+    "major_casing": "#0d3561",
+    "link": "#85ccff",
+    "link_casing": "#0d3561",
+    "minor_a": "#52a8eb",
+    "minor_b": "#c4e8ff",
+    "minor_casing": "#0e3866",
+    "railway": "#d4eeff",
+    "boundary_country_outer": "#3898eb",
+    "boundary_country_casing": "#f2faff",
+    "boundary_country_casing_opacity": 0.94,
+    "boundary_country": "#092647",
+    "boundary_state_casing": "#75c2ff",
+    "boundary_state_casing_opacity": 0.65,
+    "boundary_state": "#e6f5ff",
+    # Crisp bright white typography across all Blueprint label tiers
+    "country_label": "#ffffff",
+    "state_label": "#ffffff",
+    "city_label": "#ffffff",
+    "subplace_label": "#ffffff",
+    "water_label": "#f2faff",
+    "water_halo": "#061d38",
+    "road_label": "#ffffff",
+    "shield_label": "#ffffff",
+    "poi_text": "#ffffff",
+    "label_halo": "#061d38",
+}
+
+SYNTHWAVE_PALETTE = {
+    "water": "#0e0621",
+    "water_outline": "#d91678",
+    "river": "#9e1468",
+    "earth": "#220d42",
+    "lc_grass": "#2c1152",
+    "lc_barren": "#3d1466",
+    "lc_urban": "#591878",
+    "lc_farm": "#33125c",
+    "lc_scrub": "#381361",
+    "lc_forest": "#240e47",
+    "park": "#2b1254",
+    "wood": "#200c40",
+    "scrub": "#36145e",
+    "glacier": "#ff94cc",
+    "sand": "#7a1c7d",
+    "military": "#6e1458",
+    "hospital": "#8c1968",
+    "industrial": "#3d1766",
+    "school": "#731c78",
+    "zoo": "#42156b",
+    "aerodrome": "#381863",
+    "runway": "#ff4da6",
+    "pedestrian": "#4c1a73",
+    "pier": "#591c80",
+    "buildings": "#461873",
+    "buildings_outline": "#ff2e97",
+    "tunnel": "#180930",
+    "highway": "#ff1f8f",
+    "highway_casing": "#3d0524",
+    "major": "#ff9e1b",
+    "major_casing": "#3b1704",
+    "link": "#ff59b0",
+    "link_casing": "#2e061e",
+    "minor_a": "#8c289e",
+    "minor_b": "#ff73bf",
+    "minor_casing": "#180830",
+    "railway": "#ff4da6",
+    # Two-tone hot neon pink/magenta & pitch-black borders (no neon blue on borders)
+    "boundary_country_outer": "#ff1f8f",
+    "boundary_country_casing": "#0d041c",
+    "boundary_country_casing_opacity": 0.95,
+    "boundary_country": "#ff85c8",
+    "boundary_state_casing": "#ff2491",
+    "boundary_state_casing_opacity": 0.72,
+    "boundary_state": "#0b0317",
+    # Neon blue & glowing gold preserved for fonts and labels
+    "country_label": "#ffe652",
+    "state_label": "#00f0ff",
+    "city_label": "#70f8ff",
+    "subplace_label": "#99faff",
+    "water_label": "#00e5ff",
+    "water_halo": "#090317",
+    "road_label": "#66f7ff",
+    "shield_label": "#ffe652",
+    "poi_text": "#00f0ff",
+    "label_halo": "#0c041c",
+}
+
+WESTERN_PALETTE = {
+    # Royal blue water + geographic/physical zone colors from Geological Survey reference
+    "water": "#2458c2",
+    "water_outline": "#12347a",
+    "river": "#2e67d6",
+    "earth": "#d6be8e",
+    "lc_grass": "#e8d258",
+    "lc_barren": "#8f6b44",
+    "lc_urban": "#c97a32",
+    "lc_farm": "#dec268",
+    "lc_scrub": "#c77d5f",
+    "lc_forest": "#c98522",
+    "park": "#c98522",
+    "wood": "#b3721b",
+    "scrub": "#e0ca58",
+    "glacier": "#f5edd8",
+    "sand": "#ebda6c",
+    "military": "#b87358",
+    "hospital": "#c77a5e",
+    "industrial": "#b59568",
+    "school": "#d6a449",
+    "zoo": "#c49a45",
+    "aerodrome": "#baa075",
+    "runway": "#d9c7a3",
+    "pedestrian": "#d4be94",
+    "pier": "#b89b6c",
+    "buildings": "#ba9463",
+    "buildings_outline": "#593d1e",
+    "tunnel": "#baa37a",
+    "highway": "#b85d19",
+    "highway_casing": "#421e06",
+    "major": "#d6942a",
+    "major_casing": "#54350c",
+    "link": "#e0b44c",
+    "link_casing": "#614215",
+    "minor_a": "#dfd0ae",
+    "minor_b": "#f5ebd4",
+    "minor_casing": "#856a44",
+    "railway": "#3d2612",
+    "boundary_country_outer": "#6e4e2e",
+    "boundary_country_casing": "#ebd7a7",
+    "boundary_country_casing_opacity": 0.90,
+    "boundary_country": "#24160a",
+    "boundary_state_casing": "#b59663",
+    "boundary_state_casing_opacity": 0.65,
+    "boundary_state": "#422b15",
+    "country_label": "#1f1107",
+    "state_label": "#42220e",
+    "city_label": "#1c0f06",
+    "subplace_label": "#3d2412",
+    "water_label": "#eef4ff",
+    "water_halo": "#102e6e",
+    "road_label": "#331e0e",
+    "shield_label": "#1f1107",
+    "poi_text": "#38200e",
+    "label_halo": "#fcf6e8",
+}
+
+JURASSIC_PALETTE = {
+    # Physical/geographic zone colors (no choropleth): lush rainforest greens, savanna yellows, volcanic highland browns
+    "water": "#9cd3f5",
+    "water_outline": "#194519",
+    "river": "#6ebce8",
+    "earth": "#88cf4c",
+    "lc_grass": "#54b336",
+    "lc_barren": "#b5762a",
+    "lc_urban": "#d99b38",
+    "lc_farm": "#bee063",
+    "lc_scrub": "#f0df78",
+    "lc_forest": "#2e8222",
+    "park": "#3b962b",
+    "wood": "#29731d",
+    "scrub": "#59b538",
+    "glacier": "#faf2b8",
+    "sand": "#f5e884",
+    "military": "#9e6b2e",
+    "hospital": "#d47a46",
+    "industrial": "#b88c44",
+    "school": "#e8be54",
+    "zoo": "#66bd3e",
+    "aerodrome": "#c29e56",
+    "runway": "#e6d49c",
+    "pedestrian": "#e8dca2",
+    "pier": "#b5853d",
+    "buildings": "#b5833d",
+    "buildings_outline": "#4a2e0e",
+    "tunnel": "#c4b276",
+    "highway": "#e69c24",
+    "highway_casing": "#472806",
+    "major": "#f2d261",
+    "major_casing": "#594112",
+    "link": "#f5e082",
+    "link_casing": "#634b18",
+    "minor_a": "#ebe3ad",
+    "minor_b": "#faf5d4",
+    "minor_casing": "#756634",
+    "railway": "#4a3012",
+    "boundary_country_outer": "#1d4d1a",
+    "boundary_country_casing": "#f2dc74",
+    "boundary_country_casing_opacity": 0.90,
+    "boundary_country": "#261708",
+    "boundary_state_casing": "#c9df75",
+    "boundary_state_casing_opacity": 0.65,
+    "boundary_state": "#264f1c",
+    "country_label": "#211206",
+    "state_label": "#3b230c",
+    "city_label": "#1f1106",
+    "subplace_label": "#33200d",
+    "water_label": "#103c5c",
+    "water_halo": "#dcf2ff",
+    "road_label": "#331f0b",
+    "shield_label": "#211206",
+    "poi_text": "#301d0a",
+    "label_halo": "#fcf9eb",
+}
+
 
 def main() -> None:
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -1373,6 +1793,63 @@ def main() -> None:
             strip_uppercase=True,
             use_choropleth=False,
             hide_road_labels=True,
+        ),
+        "blueprint": build_themed_style(
+            light_tpl=light_tpl,
+            name="Blueprint",
+            sprite_name="v4/dark",
+            country_colors=BLUEPRINT_COUNTRY_COLORS,
+            state_colors=BLUEPRINT_STATE_COLORS,
+            palette=BLUEPRINT_PALETTE,
+            bold_font="Rajdhani Bold",
+            reg_font="Architects Daughter Regular",
+            italic_font="Architects Daughter Italic",
+            urban_fill_color="#246bb3",
+            water_pattern="blueprint_grid",
+            font_scale=1.12,
+        ),
+        "synthwave": build_themed_style(
+            light_tpl=light_tpl,
+            name="Synthwave",
+            sprite_name="v4/dark",
+            country_colors=SYNTHWAVE_COUNTRY_COLORS,
+            state_colors=SYNTHWAVE_STATE_COLORS,
+            palette=SYNTHWAVE_PALETTE,
+            bold_font="Audiowide Regular",
+            reg_font="Righteous Regular",
+            italic_font="Righteous Italic",
+            urban_fill_color="#6b1982",
+            water_pattern="synthwave_grid",
+        ),
+        "western": build_themed_style(
+            light_tpl=light_tpl,
+            name="Western",
+            sprite_name="v4/light",
+            country_colors=None,
+            state_colors=None,
+            palette=WESTERN_PALETTE,
+            bold_font="Josefin Sans Bold",
+            reg_font="Josefin Sans Regular",
+            italic_font="Josefin Sans Italic",
+            urban_fill_color="#c97a32",
+            water_pattern="western_water_waves",
+            use_choropleth=False,
+            font_scale=1.08,
+        ),
+        "jurassic": build_themed_style(
+            light_tpl=light_tpl,
+            name="Jurassic",
+            sprite_name="v4/light",
+            country_colors=None,
+            state_colors=None,
+            palette=JURASSIC_PALETTE,
+            bold_font="Skranji Bold",
+            reg_font="Skranji Regular",
+            italic_font="Skranji Italic",
+            urban_fill_color="#d99b38",
+            strip_uppercase=True,
+            use_choropleth=False,
+            font_scale=1.08,
         ),
     }
 

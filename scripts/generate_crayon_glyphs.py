@@ -325,6 +325,10 @@ def main() -> None:
     tolkien_font_dir = os.path.join(ts_fonts, "tolkien-fonts")
     paladin_font_dir = os.path.join(ts_fonts, "paladin-fonts")
     icy_blue_font_dir = os.path.join(ts_fonts, "icy-blue-fonts")
+    blueprint_font_dir = os.path.join(ts_fonts, "blueprint-fonts")
+    synthwave_font_dir = os.path.join(ts_fonts, "synthwave-fonts")
+    western_font_dir = os.path.join(ts_fonts, "western-fonts")
+    jurassic_font_dir = os.path.join(ts_fonts, "jurassic-fonts")
 
     specs = [
         # Elementary (Crayon Libre - CC0 Public Domain)
@@ -477,6 +481,106 @@ def main() -> None:
             0,
             0.0,
         ),
+        # Blueprint (Rajdhani Bold + Architects Daughter - SIL OFL 1.1)
+        (
+            "Rajdhani Bold",
+            os.path.join(blueprint_font_dir, "Rajdhani-Bold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Architects Daughter Regular",
+            os.path.join(blueprint_font_dir, "ArchitectsDaughter-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            1,
+            1,
+            0.0,
+        ),
+        (
+            "Architects Daughter Italic",
+            os.path.join(blueprint_font_dir, "ArchitectsDaughter-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            1,
+            1,
+            0.16,
+        ),
+        # Synthwave (Audiowide + Righteous - SIL OFL 1.1)
+        (
+            "Audiowide Regular",
+            os.path.join(synthwave_font_dir, "Audiowide-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Righteous Regular",
+            os.path.join(synthwave_font_dir, "Righteous-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Righteous Italic",
+            os.path.join(synthwave_font_dir, "Righteous-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.16,
+        ),
+        # Western (Josefin Sans modern stylish geometric sans - SIL OFL 1.1)
+        (
+            "Josefin Sans Bold",
+            os.path.join(western_font_dir, "JosefinSans-Bold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Josefin Sans Regular",
+            os.path.join(western_font_dir, "JosefinSans-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Josefin Sans Italic",
+            os.path.join(western_font_dir, "JosefinSans-Italic.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.0,
+        ),
+        # Jurassic (Skranji carved prehistoric adventure - SIL OFL 1.1)
+        (
+            "Skranji Bold",
+            os.path.join(jurassic_font_dir, "Skranji-Bold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Skranji Regular",
+            os.path.join(jurassic_font_dir, "Skranji-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Skranji Italic",
+            os.path.join(jurassic_font_dir, "Skranji-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.16,
+        ),
     ]
 
     for font_name, ttf_path, fb_dir, close_it, dilate_it, shear in specs:
@@ -486,6 +590,8 @@ def main() -> None:
             os.path.join(ts_fonts, font_name),
             os.path.join(pm_fonts, font_name),
         ]
+        if all(os.path.isfile(os.path.join(d, "0-255.pbf")) for d in out_dirs):
+            continue
         generate_font_stack(
             font_name=font_name,
             ttf_path=ttf_path,

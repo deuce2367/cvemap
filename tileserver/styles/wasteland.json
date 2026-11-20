@@ -321,12 +321,60 @@
               "literal",
               [
                 "scrub",
+                "heath"
+              ]
+            ]
+          ],
+          "#783517",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
                 "grassland",
-                "grass"
+                "grass",
+                "meadow",
+                "wetland",
+                "marsh"
               ]
             ]
           ],
           "#7d3818",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "farmland",
+                "orchard",
+                "vineyard"
+              ]
+            ]
+          ],
+          "#7d4a16",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "bare_rock",
+                "scree"
+              ]
+            ]
+          ],
+          "#8d3c18",
           [
             "==",
             [
@@ -337,12 +385,18 @@
           ],
           "#fea20f",
           [
-            "==",
+            "in",
             [
               "get",
               "pmap:kind"
             ],
-            "sand"
+            [
+              "literal",
+              [
+                "sand",
+                "beach"
+              ]
+            ]
           ],
           "#c47d16",
           [
@@ -447,12 +501,60 @@
               "literal",
               [
                 "scrub",
+                "heath"
+              ]
+            ]
+          ],
+          "#783517",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
                 "grassland",
-                "grass"
+                "grass",
+                "meadow",
+                "wetland",
+                "marsh"
               ]
             ]
           ],
           "#7d3818",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "farmland",
+                "orchard",
+                "vineyard"
+              ]
+            ]
+          ],
+          "#7d4a16",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "bare_rock",
+                "scree"
+              ]
+            ]
+          ],
+          "#8d3c18",
           [
             "==",
             [
@@ -463,12 +565,18 @@
           ],
           "#fea20f",
           [
-            "==",
+            "in",
             [
               "get",
               "pmap:kind"
             ],
-            "sand"
+            [
+              "literal",
+              [
+                "sand",
+                "beach"
+              ]
+            ]
           ],
           "#c47d16",
           [
@@ -573,12 +681,60 @@
               "literal",
               [
                 "scrub",
+                "heath"
+              ]
+            ]
+          ],
+          "#783517",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
                 "grassland",
-                "grass"
+                "grass",
+                "meadow",
+                "wetland",
+                "marsh"
               ]
             ]
           ],
           "#7d3818",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "farmland",
+                "orchard",
+                "vineyard"
+              ]
+            ]
+          ],
+          "#7d4a16",
+          [
+            "in",
+            [
+              "get",
+              "pmap:kind"
+            ],
+            [
+              "literal",
+              [
+                "bare_rock",
+                "scree"
+              ]
+            ]
+          ],
+          "#8d3c18",
           [
             "==",
             [
@@ -589,12 +745,18 @@
           ],
           "#fea20f",
           [
-            "==",
+            "in",
             [
               "get",
               "pmap:kind"
             ],
-            "sand"
+            [
+              "literal",
+              [
+                "sand",
+                "beach"
+              ]
+            ]
           ],
           "#c47d16",
           [
@@ -3060,7 +3222,8 @@
       "paint": {
         "text-color": "#febe3a",
         "text-halo-color": "#140a05",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -3956,7 +4119,8 @@
       "paint": {
         "text-color": "#fc6a17",
         "text-halo-color": "#120804",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -3982,7 +4146,9 @@
           "Quantico Regular"
         ]
       },
-      "paint": {}
+      "paint": {
+        "text-halo-blur": 0.15
+      }
     },
     {
       "id": "roads_labels_minor",
@@ -4881,7 +5047,8 @@
       "paint": {
         "text-color": "#febe3a",
         "text-halo-color": "#140a05",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -5792,7 +5959,8 @@
       "paint": {
         "text-color": "#fc6a17",
         "text-halo-width": 1.8,
-        "text-halo-color": "#120804"
+        "text-halo-color": "#120804",
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -6686,7 +6854,8 @@
       "paint": {
         "text-color": "#feb426",
         "text-halo-color": "#140a05",
-        "text-halo-width": 1.6
+        "text-halo-width": 1.6,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -7595,7 +7764,8 @@
       "paint": {
         "text-color": "#fc6a17",
         "text-halo-color": "#120804",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -7695,7 +7865,8 @@
         "text-rotation-alignment": "viewport"
       },
       "paint": {
-        "text-color": "#ffe001"
+        "text-color": "#ffe001",
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -8594,7 +8765,8 @@
       "paint": {
         "text-color": "#febe3a",
         "text-halo-color": "#140a05",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -9668,7 +9840,8 @@
       "paint": {
         "text-color": "#febe3a",
         "text-halo-color": "#140a05",
-        "text-halo-width": 1.6
+        "text-halo-width": 1.6,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -10611,7 +10784,8 @@
       "paint": {
         "text-color": "#feb426",
         "text-halo-color": "#140a05",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       }
     },
     {
@@ -11540,7 +11714,8 @@
       "paint": {
         "text-color": "#fea20f",
         "text-halo-color": "#140a05",
-        "text-halo-width": 1.8
+        "text-halo-width": 1.8,
+        "text-halo-blur": 0.15
       },
       "minzoom": 3
     },
@@ -12674,7 +12849,8 @@
       "paint": {
         "text-color": "#ffe45e",
         "text-halo-color": "#140a05",
-        "text-halo-width": 2.0
+        "text-halo-width": 2.0,
+        "text-halo-blur": 0.15
       },
       "minzoom": 3
     },
@@ -12844,7 +13020,8 @@
       "paint": {
         "text-color": "#ffe001",
         "text-halo-color": "#140a05",
-        "text-halo-width": 2.2
+        "text-halo-width": 2.2,
+        "text-halo-blur": 0.15
       }
     }
   ],
