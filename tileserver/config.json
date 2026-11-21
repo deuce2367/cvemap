@@ -13,6 +13,8 @@
     "black": { "style": "black.json" },
     "black_and_white": { "style": "black_and_white.json" },
     "blueprint": { "style": "blueprint.json" },
+    "clover": { "style": "clover.json" },
+    "cyber": { "style": "cyber.json" },
     "dark": { "style": "dark.json" },
     "dusk_rose": { "style": "dusk_rose.json" },
     "elementary": { "style": "elementary.json" },

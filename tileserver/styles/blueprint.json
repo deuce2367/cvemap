@@ -1224,7 +1224,7 @@
       "source-layer": "water",
       "paint": {
         "fill-pattern": "blueprint_grid",
-        "fill-opacity": 0.55
+        "fill-opacity": 0.62
       }
     },
     {

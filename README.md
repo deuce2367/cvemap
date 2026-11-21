@@ -73,8 +73,9 @@ Both targets run **FastAPI + Xvfb + TileServer-GL** in a single container:
 
 | Service / Endpoint | URL | Description |
 | :--- | :--- | :--- |
-| **Raster Viewer** | `http://localhost:8000/` | Leaflet viewer serving all discovered `.pmtiles` and `.mbtiles` datasets across all 29 self-contained offline Protomaps, OpenMapTiles & Nextzen basemaps over **XYZ** and **OGC WMS** (`EPSG:3857` & `EPSG:4326`) |
-| **Vector Viewer** | `http://localhost:8000/modern` | Hardware-accelerated MapLibre GL JS viewer rendering native PMTiles & MVT vector tiles across all 29 offline basemaps |
+| **Raster Viewer** | `http://localhost:8000/` | Leaflet viewer serving all discovered `.pmtiles` and `.mbtiles` datasets across all 31 self-contained offline Protomaps, OpenMapTiles & Nextzen basemaps over **XYZ** and **OGC WMS** (`EPSG:3857` & `EPSG:4326`) |
+| **Vector Viewer** | `http://localhost:8000/modern` | Hardware-accelerated MapLibre GL JS viewer rendering native PMTiles & MVT vector tiles across all 31 offline basemaps |
+| **3D Globe Viewer** | `http://localhost:8000/globe` | Self-contained 3D Globe viewer supporting both **MapLibre GL v5 Native Vector 3D Globe** (`/globe`) and **OpenGlobus 3D Ellipsoid Globe** (`/globe?engine=openglobus` or `/openglobus`) across all 31 offline basemaps |
 | **Style JSON Endpoint** | `http://localhost:8000/api/style/{dataset}/{style}.json` | Self-contained offline MapLibre GL JS style JSON (with local fonts, sprites, and vector sources) for any dataset & style |
 | **WMS Endpoint** | `http://localhost:8000/wms` | OGC WMS `1.1.1` & `1.3.0` (`GetCapabilities` & `GetMap` in `EPSG:3857` & `EPSG:4326`, supporting `LAYERS={style}` or `LAYERS={dataset}__{style}`) |
 | **XYZ Endpoint** | `http://localhost:8000/xyz/{dataset}/{style}/{z}/{x}/{y}.png` | Standard slippy raster PNG tiles for any dataset & style (also `/xyz/{style}/{z}/{x}/{y}.png` for the primary dataset) |

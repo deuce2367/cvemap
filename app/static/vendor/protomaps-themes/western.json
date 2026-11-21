@@ -11,7 +11,7 @@
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#2458c2"
+        "background-color": "#0649c4"
       }
     },
     {
@@ -1117,7 +1117,7 @@
       "source": "protomaps",
       "source-layer": "water",
       "paint": {
-        "fill-color": "#2458c2"
+        "fill-color": "#0649c4"
       }
     },
     {
@@ -1141,7 +1141,7 @@
         "Polygon"
       ],
       "paint": {
-        "line-color": "#12347a",
+        "line-color": "#00266e",
         "line-width": [
           "interpolate",
           [
@@ -1174,7 +1174,7 @@
         "stream"
       ],
       "paint": {
-        "line-color": "#2e67d6",
+        "line-color": "#1258db",
         "line-width": 0.5
       }
     },
@@ -1190,7 +1190,7 @@
         "river"
       ],
       "paint": {
-        "line-color": "#2e67d6",
+        "line-color": "#1258db",
         "line-width": [
           "interpolate",
           [
@@ -3158,7 +3158,7 @@
       "layout": {
         "symbol-placement": "point",
         "text-font": [
-          "Josefin Sans Regular"
+          "Montserrat SemiBold"
         ],
         "text-field": [
           "get",
@@ -3180,9 +3180,9 @@
       },
       "paint": {
         "text-color": "#331e0e",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 1.8,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.15,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -3200,7 +3200,7 @@
       "layout": {
         "symbol-placement": "line",
         "text-font": [
-          "Josefin Sans Italic"
+          "Montserrat SemiBold Italic"
         ],
         "text-field": [
           "case",
@@ -3340,7 +3340,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -3463,7 +3463,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -3501,7 +3501,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -3564,7 +3564,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -3621,7 +3621,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -3686,7 +3686,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -3724,7 +3724,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -3762,7 +3762,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -3828,7 +3828,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -3866,7 +3866,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -3930,7 +3930,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -3968,7 +3968,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4025,7 +4025,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4063,7 +4063,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4076,10 +4076,10 @@
         "text-letter-spacing": 0.2
       },
       "paint": {
-        "text-color": "#eef4ff",
-        "text-halo-color": "#102e6e",
-        "text-halo-width": 1.8,
-        "text-halo-blur": 0.15
+        "text-color": "#ffffff",
+        "text-halo-color": "#021847",
+        "text-halo-width": 1.15,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -4102,11 +4102,11 @@
         "icon-rotate": 90,
         "symbol-spacing": 100,
         "text-font": [
-          "Josefin Sans Regular"
+          "Montserrat SemiBold"
         ]
       },
       "paint": {
-        "text-halo-blur": 0.15
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -4129,7 +4129,7 @@
         ],
         "symbol-placement": "line",
         "text-font": [
-          "Josefin Sans Regular"
+          "Montserrat SemiBold"
         ],
         "text-field": [
           "case",
@@ -4269,7 +4269,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4392,7 +4392,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -4430,7 +4430,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -4493,7 +4493,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4550,7 +4550,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4615,7 +4615,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -4653,7 +4653,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -4691,7 +4691,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -4757,7 +4757,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4795,7 +4795,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4859,7 +4859,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4897,7 +4897,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4954,7 +4954,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -4992,7 +4992,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5017,9 +5017,9 @@
       },
       "paint": {
         "text-color": "#331e0e",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 1.8,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.15,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -5038,7 +5038,7 @@
       ],
       "layout": {
         "text-font": [
-          "Josefin Sans Italic"
+          "Montserrat SemiBold Italic"
         ],
         "text-field": [
           "case",
@@ -5178,7 +5178,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5301,7 +5301,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -5339,7 +5339,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -5402,7 +5402,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5459,7 +5459,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5524,7 +5524,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -5562,7 +5562,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -5600,7 +5600,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -5666,7 +5666,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5704,7 +5704,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5768,7 +5768,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5806,7 +5806,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5863,7 +5863,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5901,7 +5901,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -5923,17 +5923,17 @@
           6,
           19,
           10,
-          24
+          23
         ],
         "text-letter-spacing": 0.06,
         "text-max-width": 9,
         "text-transform": "uppercase"
       },
       "paint": {
-        "text-color": "#eef4ff",
-        "text-halo-width": 1.8,
-        "text-halo-color": "#102e6e",
-        "text-halo-blur": 0.15
+        "text-color": "#ffffff",
+        "text-halo-width": 1.15,
+        "text-halo-color": "#021847",
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -5948,7 +5948,7 @@
       ],
       "layout": {
         "text-font": [
-          "Josefin Sans Italic"
+          "Montserrat SemiBold Italic"
         ],
         "text-field": [
           "case",
@@ -6088,7 +6088,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6211,7 +6211,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -6249,7 +6249,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -6312,7 +6312,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6369,7 +6369,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6434,7 +6434,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -6472,7 +6472,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -6510,7 +6510,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -6576,7 +6576,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6614,7 +6614,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6678,7 +6678,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6716,7 +6716,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6773,7 +6773,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6811,7 +6811,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -6826,9 +6826,9 @@
       },
       "paint": {
         "text-color": "#3d2412",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 1.6,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.02,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -6844,7 +6844,7 @@
       ],
       "layout": {
         "text-font": [
-          "Josefin Sans Italic"
+          "Montserrat SemiBold Italic"
         ],
         "text-field": [
           "case",
@@ -6984,7 +6984,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7107,7 +7107,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -7145,7 +7145,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -7208,7 +7208,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7265,7 +7265,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7330,7 +7330,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -7368,7 +7368,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -7406,7 +7406,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -7472,7 +7472,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7510,7 +7510,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7574,7 +7574,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7612,7 +7612,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7669,7 +7669,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7707,7 +7707,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -7735,10 +7735,10 @@
         "text-max-width": 9
       },
       "paint": {
-        "text-color": "#eef4ff",
-        "text-halo-color": "#102e6e",
-        "text-halo-width": 1.8,
-        "text-halo-blur": 0.15
+        "text-color": "#ffffff",
+        "text-halo-color": "#021847",
+        "text-halo-width": 1.15,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -7829,7 +7829,7 @@
           "ref"
         ],
         "text-font": [
-          "Josefin Sans Bold"
+          "Montserrat Bold"
         ],
         "text-size": 8,
         "icon-size": 0.8,
@@ -7839,7 +7839,7 @@
       },
       "paint": {
         "text-color": "#1f1107",
-        "text-halo-blur": 0.15
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -7861,7 +7861,7 @@
         ],
         "symbol-placement": "line",
         "text-font": [
-          "Josefin Sans Regular"
+          "Montserrat SemiBold"
         ],
         "text-field": [
           "case",
@@ -8001,7 +8001,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8124,7 +8124,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -8162,7 +8162,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -8225,7 +8225,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8282,7 +8282,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8347,7 +8347,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -8385,7 +8385,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -8423,7 +8423,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -8489,7 +8489,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8527,7 +8527,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8591,7 +8591,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8629,7 +8629,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8686,7 +8686,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8724,7 +8724,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -8749,9 +8749,9 @@
       },
       "paint": {
         "text-color": "#331e0e",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 1.8,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.15,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -8926,7 +8926,7 @@
           ]
         ],
         "text-font": [
-          "Josefin Sans Regular"
+          "Montserrat SemiBold"
         ],
         "text-justify": "auto",
         "text-field": [
@@ -9067,7 +9067,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9190,7 +9190,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -9228,7 +9228,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -9291,7 +9291,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9348,7 +9348,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9413,7 +9413,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -9451,7 +9451,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -9489,7 +9489,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -9555,7 +9555,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9593,7 +9593,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9657,7 +9657,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9695,7 +9695,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9752,7 +9752,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9790,7 +9790,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -9812,9 +9812,9 @@
       },
       "paint": {
         "text-color": "#38200e",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 1.6,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.02,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -9982,7 +9982,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10105,7 +10105,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -10143,7 +10143,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -10206,7 +10206,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10263,7 +10263,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10328,7 +10328,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -10366,7 +10366,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -10404,7 +10404,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -10470,7 +10470,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10508,7 +10508,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10572,7 +10572,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10610,7 +10610,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10667,7 +10667,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10705,7 +10705,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -10715,7 +10715,7 @@
           ]
         ],
         "text-font": [
-          "Josefin Sans Regular"
+          "Montserrat SemiBold"
         ],
         "text-max-width": 7,
         "text-letter-spacing": 0.1,
@@ -10753,9 +10753,9 @@
       },
       "paint": {
         "text-color": "#3d2412",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 1.8,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.15,
+        "text-halo-blur": 0.0
       }
     },
     {
@@ -10928,7 +10928,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11051,7 +11051,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -11089,7 +11089,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -11152,7 +11152,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11209,7 +11209,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11274,7 +11274,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -11312,7 +11312,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -11350,7 +11350,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -11416,7 +11416,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11454,7 +11454,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11518,7 +11518,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11556,7 +11556,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11613,7 +11613,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11651,7 +11651,7 @@
                       [
                         "literal",
                         [
-                          "Josefin Sans Regular"
+                          "Montserrat SemiBold"
                         ]
                       ]
                     ]
@@ -11662,7 +11662,7 @@
           ]
         ],
         "text-font": [
-          "Josefin Sans Bold"
+          "Montserrat Bold"
         ],
         "text-size": [
           "interpolate",
@@ -11683,9 +11683,9 @@
       },
       "paint": {
         "text-color": "#42220e",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 1.8,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.15,
+        "text-halo-blur": 0.0
       },
       "minzoom": 3
     },
@@ -11860,7 +11860,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -11983,7 +11983,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -12021,7 +12021,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -12084,7 +12084,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12141,7 +12141,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12206,7 +12206,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -12244,7 +12244,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -12282,7 +12282,7 @@
                   [
                     "literal",
                     [
-                      "Josefin Sans Regular"
+                      "Montserrat SemiBold"
                     ]
                   ]
                 ]
@@ -12348,7 +12348,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12386,7 +12386,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12450,7 +12450,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12488,7 +12488,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12545,7 +12545,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12583,7 +12583,7 @@
                     [
                       "literal",
                       [
-                        "Josefin Sans Regular"
+                        "Montserrat SemiBold"
                       ]
                     ]
                   ]
@@ -12613,13 +12613,13 @@
           [
             "literal",
             [
-              "Josefin Sans Bold"
+              "Montserrat Bold"
             ]
           ],
           [
             "literal",
             [
-              "Josefin Sans Regular"
+              "Montserrat SemiBold"
             ]
           ]
         ],
@@ -12680,7 +12680,7 @@
               ],
               13
             ],
-            9,
+            8,
             11
           ],
           5,
@@ -12747,7 +12747,7 @@
               9
             ],
             13,
-            21
+            20
           ],
           14,
           [
@@ -12769,7 +12769,7 @@
               8
             ],
             14,
-            24
+            23
           ]
         ],
         "icon-padding": [
@@ -12818,9 +12818,9 @@
       },
       "paint": {
         "text-color": "#1c0f06",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 2.0,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.28,
+        "text-halo-blur": 0.0
       },
       "minzoom": 3
     },
@@ -12866,7 +12866,7 @@
           {}
         ],
         "text-font": [
-          "Josefin Sans Bold"
+          "Montserrat Bold"
         ],
         "text-size": [
           "interpolate",
@@ -12940,7 +12940,7 @@
               8
             ],
             14,
-            23
+            22
           ],
           9,
           [
@@ -12962,7 +12962,7 @@
               7
             ],
             16,
-            26
+            25
           ]
         ],
         "icon-padding": [
@@ -12989,9 +12989,9 @@
       },
       "paint": {
         "text-color": "#1f1107",
-        "text-halo-color": "#fcf6e8",
-        "text-halo-width": 2.2,
-        "text-halo-blur": 0.15
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.41,
+        "text-halo-blur": 0.0
       }
     }
   ],

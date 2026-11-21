@@ -62,6 +62,15 @@ def startup_event() -> None:
     _sync_if_needed()
 
 
+@app.middleware("http")
+async def disable_sprite_and_theme_cache(request: Request, call_next):
+    response = await call_next(request)
+    p = request.url.path
+    if p.startswith("/static/vendor/protomaps-assets/sprites/") or p.startswith("/static/vendor/openglobus/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+
 os.makedirs(DATA_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/data", StaticFiles(directory=DATA_DIR), name="data")
@@ -81,6 +90,17 @@ def raster_viewer() -> HTMLResponse:
 def vector_viewer() -> HTMLResponse:
     modern_path = os.path.abspath("static/modern.html")
     with open(modern_path, "r") as f:
+        return HTMLResponse(
+            content=f.read(),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
+
+
+@app.get("/globe", response_class=HTMLResponse)
+@app.get("/openglobus", response_class=HTMLResponse)
+def globe_viewer() -> HTMLResponse:
+    globe_path = os.path.abspath("static/globe.html")
+    with open(globe_path, "r") as f:
         return HTMLResponse(
             content=f.read(),
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},

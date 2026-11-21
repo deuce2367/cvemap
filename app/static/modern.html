@@ -55,8 +55,10 @@
 
         <label for="viewer-select">Viewer:</label>
         <select id="viewer-select" onchange="onViewerChange(this.value)">
-            <option value="raster">Raster</option>
-            <option value="vector" selected>Vector</option>
+            <option value="raster">Raster (2D Leaflet)</option>
+            <option value="vector" selected>Vector (2D MapLibre)</option>
+            <option value="globe">Vector (3D MapLibre)</option>
+            <option value="openglobus">Raster (3D OpenGlobus)</option>
         </select>
 
         <label for="layer-select">Map Dataset:</label>
@@ -137,6 +139,8 @@
         var lastPointerLatLng = null;
         var allStyleOptions = [
             { id: 'blueprint', title: 'Blueprint' },
+            { id: 'clover', title: 'Clover' },
+            { id: 'cyber', title: 'Cyber' },
             { id: 'elementary', title: 'Elementary' },
             { id: 'fiord', title: 'Fiord' },
             { id: 'icy_blue', title: 'Icy Blue' },
@@ -271,28 +275,33 @@
         }
 
         window.onViewerChange = function(mode) {
+            if (mode === 'vector') return;
+            var theme = styleUrlToTileServerTheme(document.getElementById('style-select').value);
+            var z = 4, lat = 0, lng = 0;
+            if (map) {
+                var c = map.getCenter();
+                z = Math.round(map.getZoom());
+                lat = c.lat;
+                lng = c.lng;
+            } else if (fallbackMap) {
+                var fc = fallbackMap.getCenter();
+                z = Math.round(fallbackMap.getZoom());
+                lat = fc.lat;
+                lng = fc.lng;
+            } else {
+                var hv = parseHashView();
+                if (hv) { z = Math.round(hv.zoom); lat = hv.lat; lng = hv.lng; }
+            }
+            var params = new URLSearchParams();
+            if (mode === 'openglobus') params.set('engine', 'openglobus');
+            if (layerName) params.set('layer', layerName);
+            if (theme) params.set('style', theme);
+            var qs = params.toString();
+            var hashStr = '#' + z + '/' + lat.toFixed(4) + '/' + lng.toFixed(4);
             if (mode === 'raster') {
-                var theme = styleUrlToTileServerTheme(document.getElementById('style-select').value);
-                var z = 4, lat = 0, lng = 0;
-                if (map) {
-                    var c = map.getCenter();
-                    z = Math.round(map.getZoom());
-                    lat = c.lat;
-                    lng = c.lng;
-                } else if (fallbackMap) {
-                    var fc = fallbackMap.getCenter();
-                    z = Math.round(fallbackMap.getZoom());
-                    lat = fc.lat;
-                    lng = fc.lng;
-                } else {
-                    var hv = parseHashView();
-                    if (hv) { z = Math.round(hv.zoom); lat = hv.lat; lng = hv.lng; }
-                }
-                var params = new URLSearchParams();
-                if (layerName) params.set('layer', layerName);
-                if (theme) params.set('style', theme);
-                var qs = params.toString();
-                window.location.href = '/' + (qs ? '?' + qs : '') + '#' + z + '/' + lat.toFixed(4) + '/' + lng.toFixed(4);
+                window.location.href = '/' + (qs ? '?' + qs : '') + hashStr;
+            } else if (mode === 'globe' || mode === 'openglobus') {
+                window.location.href = '/globe' + (qs ? '?' + qs : '') + hashStr;
             }
         };
 

@@ -19,6 +19,8 @@ TILESERVER_STYLES = [
     "black",
     "black_and_white",
     "blueprint",
+    "clover",
+    "cyber",
     "dark",
     "dusk_rose",
     "elementary",
@@ -97,6 +99,8 @@ def make_dataset_style_id(dataset_name: str, style_id: str) -> str:
 def format_style_title(style_id: str) -> str:
     if style_id in (
         "blueprint",
+        "clover",
+        "cyber",
         "elementary",
         "icy_blue",
         "jurassic",

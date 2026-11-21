@@ -329,6 +329,7 @@ def main() -> None:
     synthwave_font_dir = os.path.join(ts_fonts, "synthwave-fonts")
     western_font_dir = os.path.join(ts_fonts, "western-fonts")
     jurassic_font_dir = os.path.join(ts_fonts, "jurassic-fonts")
+    cyber_font_dir = os.path.join(ts_fonts, "cyber-fonts")
 
     specs = [
         # Elementary (Crayon Libre - CC0 Public Domain)
@@ -406,28 +407,28 @@ def main() -> None:
             0,
             0.0,
         ),
-        # Tolkien (Charm calligraphic quill script - SIL OFL 1.1)
+        # Tolkien (Eagle Lake Middle-earth calligraphic fantasy script - SIL OFL 1.1)
         (
-            "Charm Bold",
-            os.path.join(tolkien_font_dir, "Charm-Bold.ttf"),
+            "Eagle Lake Bold",
+            os.path.join(tolkien_font_dir, "EagleLake-Regular.ttf"),
             os.path.join(ts_fonts, "Noto Sans Medium"),
-            0,
-            0,
+            1,
+            1,
             0.0,
         ),
         (
-            "Charm Regular",
-            os.path.join(tolkien_font_dir, "Charm-Regular.ttf"),
+            "Eagle Lake Regular",
+            os.path.join(tolkien_font_dir, "EagleLake-Regular.ttf"),
             os.path.join(ts_fonts, "Noto Sans Regular"),
-            0,
+            1,
             0,
             0.0,
         ),
         (
-            "Charm Italic",
-            os.path.join(tolkien_font_dir, "Charm-Regular.ttf"),
+            "Eagle Lake Italic",
+            os.path.join(tolkien_font_dir, "EagleLake-Regular.ttf"),
             os.path.join(ts_fonts, "Noto Sans Italic"),
-            0,
+            1,
             0,
             0.14,
         ),
@@ -531,26 +532,26 @@ def main() -> None:
             0,
             0.16,
         ),
-        # Western (Josefin Sans modern stylish geometric sans - SIL OFL 1.1)
+        # Western (Montserrat modern stylish geometric sans - SIL OFL 1.1)
         (
-            "Josefin Sans Bold",
-            os.path.join(western_font_dir, "JosefinSans-Bold.ttf"),
+            "Montserrat Bold",
+            os.path.join(western_font_dir, "Montserrat-Bold.ttf"),
             os.path.join(ts_fonts, "Noto Sans Medium"),
             0,
             0,
             0.0,
         ),
         (
-            "Josefin Sans Regular",
-            os.path.join(western_font_dir, "JosefinSans-Regular.ttf"),
+            "Montserrat SemiBold",
+            os.path.join(western_font_dir, "Montserrat-SemiBold.ttf"),
             os.path.join(ts_fonts, "Noto Sans Regular"),
             0,
             0,
             0.0,
         ),
         (
-            "Josefin Sans Italic",
-            os.path.join(western_font_dir, "JosefinSans-Italic.ttf"),
+            "Montserrat SemiBold Italic",
+            os.path.join(western_font_dir, "Montserrat-SemiBoldItalic.ttf"),
             os.path.join(ts_fonts, "Noto Sans Italic"),
             0,
             0,
@@ -576,6 +577,31 @@ def main() -> None:
         (
             "Skranji Italic",
             os.path.join(jurassic_font_dir, "Skranji-Regular.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            0,
+            0,
+            0.16,
+        ),
+        # Cyber (Tektur octilinear cyber/robotic/scifi - SIL OFL 1.1)
+        (
+            "Tektur Bold",
+            os.path.join(cyber_font_dir, "Tektur-Bold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Tektur Regular",
+            os.path.join(cyber_font_dir, "Tektur-Medium.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            0,
+            0,
+            0.0,
+        ),
+        (
+            "Tektur Italic",
+            os.path.join(cyber_font_dir, "Tektur-Medium.ttf"),
             os.path.join(ts_fonts, "Noto Sans Italic"),
             0,
             0,

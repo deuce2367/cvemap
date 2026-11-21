@@ -53,91 +53,91 @@ ELEMENTARY_STATE_COLORS = [
 MATRIX_COUNTRY_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#1b251a",
-    2, "#263822",
-    3, "#27542b",
-    4, "#354a26",
-    5, "#4a5c2f",
-    6, "#1f3b29",
-    7, "#2e523b",
-    8, "#616e36",
-    9, "#2b4223",
-    "#1b251a",
+    1, "#111811",  # Matrix Obsidian Green-Black
+    2, "#2E3B2A",  # Inside-the-Matrix Dark Olive-Green (#2E3B2A)
+    3, "#063B08",  # Deep Terminal Phosphor Green (#003B00)
+    4, "#1d331d",  # Dark Digital Forest Green
+    5, "#5C7A4A",  # Inside-the-Matrix Muted Forest Green (#5C7A4A)
+    6, "#162616",  # Deep Matrix Code Moss Green
+    7, "#264a28",  # Rich Matrix Emerald-Dark Green
+    8, "#455e37",  # Matrix Sage-Olive Green
+    9, "#33472b",  # Tinted Matrix Pine Green
+    "#111811",
 ]
 
 MATRIX_STATE_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#223020",
-    2, "#294024",
-    3, "#2a572e",
-    4, "#3a5029",
-    5, "#506332",
-    6, "#23402d",
-    7, "#345941",
-    8, "#616e36",
-    9, "#304726",
-    "#223020",
+    1, "#161f16",
+    2, "#33422f",
+    3, "#0a420c",
+    4, "#223b22",
+    5, "#61804f",
+    6, "#1b2e1b",
+    7, "#2b522d",
+    8, "#4b663c",
+    9, "#394f30",
+    "#161f16",
 ]
 
 WASTELAND_COUNTRY_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#462814",
-    2, "#592b15",
-    3, "#8f5b14",  # Warm Wasteland gold-ochre
-    4, "#7d3818",
-    5, "#8d3c18",
-    6, "#9e4218",
-    7, "#502411",
-    8, "#a66d16",  # Atomic amber-gold
-    9, "#632d14",
-    "#462814",
+    1, "#4d2b14",
+    2, "#633015",
+    3, "#9c6314",  # Warm Wasteland gold-ochre
+    4, "#913f16",  # Brighter burnt orange
+    5, "#a34516",  # Vibrant wasteland rust-orange
+    6, "#b84d16",  # Bright atomic orange
+    7, "#592811",
+    8, "#bd7a16",  # Atomic amber-gold
+    9, "#733414",
+    "#4d2b14",
 ]
 
 WASTELAND_STATE_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#4c2a15",
-    2, "#945f14",  # Warm gold-ochre
-    3, "#703517",
-    4, "#823a18",
-    5, "#913e18",
-    6, "#ab7216",  # Atomic amber-gold
-    7, "#552612",
-    8, "#753015",
-    9, "#632d14",
-    "#4c2a15",
+    1, "#542e15",
+    2, "#a16714",  # Warm gold-ochre
+    3, "#803b17",
+    4, "#964117",
+    5, "#a84717",
+    6, "#c27e16",  # Atomic amber-gold
+    7, "#5e2a12",
+    8, "#873815",
+    9, "#733414",
+    "#542e15",
 ]
 
 TOLKIEN_COUNTRY_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#d9b589",  # Warm Tawny Parchment Brown (Eriador / Gondor plains)
-    2, "#a6cadb",  # Misty Sky-Blue (Helcaraxe / Ilmarin)
-    3, "#f0dc86",  # Lamps of the Valar / Laurelin Golden Glow
-    4, "#c2926b",  # Rich Chestnut / Russet Earth Brown
-    5, "#9cd184",  # Shire Spring Meadow Green
-    6, "#8bb6cf",  # Coastal Fjord Blue (Lindon / Belfalas)
-    7, "#e3c388",  # Warm Golden Amber-Sand (Haradwaith)
-    8, "#b5835e",  # Deep Cinnamon / Highland Umber Brown
-    9, "#b8d8e6",  # Pale Elven Ice-Blue
-    "#d9b589",
+    1, "#ede6d0",  # The Hobbit Dust-Jacket Cream Parchment Sky (#ede6d0)
+    2, "#74a82e",  # The Hobbit Forest Canopy Apple-Green (#74a82e)
+    3, "#5674ae",  # Misty Mountains Cobalt-Ultramarine Blue (#5674ae)
+    4, "#789748",  # Hobbit Rune-Border Sage-Olive Green (#789748)
+    5, "#e0d8be",  # Warm Vellum Parchment Ivory
+    6, "#7ba63b",  # Hobbiton Rolling Hill Meadow Green (#7ba63b)
+    7, "#6b88bd",  # Blue Mountains Slate-Cobalt
+    8, "#c7b493",  # Lonely Mountain Warm Sandstone
+    9, "#d9cfd2",  # Pale Rising-Sun Blush Ivory (#d9d1d4)
+    "#ede6d0",
 ]
 
 TOLKIEN_STATE_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#dec096",  # Warm Buff-Brown
-    2, "#adcfe0",  # Soft Fjord Blue
-    3, "#f2e08f",  # Sunlit Gold
-    4, "#c79973",  # Warm Russet Brown
-    5, "#a2d48b",  # Fresh Meadow Green
-    6, "#93bdd6",  # Misty Sea-Blue
-    7, "#e6c891",  # Golden Ochre-Sand
-    8, "#ba8a66",  # Tawny Chestnut Brown
-    9, "#bedce8",  # Pale Ice-Blue
-    "#dec096",
+    1, "#f0ead6",
+    2, "#7ab032",
+    3, "#5c7ab5",
+    4, "#7f9e4d",
+    5, "#e4dcc4",
+    6, "#81ad40",
+    7, "#728fc4",
+    8, "#ccb999",
+    9, "#ded4d7",
+    "#f0ead6",
 ]
 
 PALADIN_COUNTRY_COLORS = [
@@ -228,6 +228,39 @@ SYNTHWAVE_STATE_COLORS = [
     8, "#7a1e87",
     9, "#1e1445",
     "#230e42",
+]
+
+# Cyber Futuristic City Palette:
+# Swatches from reference: #5137b4, #aa4bdd, #ff40aa, #ffcfd5, #72c4ff, #c7ffff
+# Background tones: #080644, #240c55, #404bb1
+CYBER_COUNTRY_COLORS = [
+    "match",
+    ["get", "color_id"],
+    1, "#1d1666",  # Deep Cyber Midnight Indigo
+    2, "#5137b4",  # Swatch 1: Electric Indigo-Violet (#5137b4)
+    3, "#2d248a",  # Futuristic Tower Sapphire-Indigo
+    4, "#6b3ec7",  # Neon Violet-Indigo
+    5, "#404bb1",  # City Skyline Cobalt-Indigo (#404bb1)
+    6, "#8545d4",  # Deep Amethyst Purple
+    7, "#252d80",  # Starlight Navy-Indigo
+    8, "#aa4bdd",  # Swatch 2: Luminous Amethyst (#aa4bdd)
+    9, "#362b9e",  # Royal Cyber Indigo
+    "#1d1666",
+]
+
+CYBER_STATE_COLORS = [
+    "match",
+    ["get", "color_id"],
+    1, "#221a70",
+    2, "#573cbd",
+    3, "#322994",
+    4, "#7244cf",
+    5, "#4651ba",
+    6, "#8c4bde",
+    7, "#2a338a",
+    8, "#b052e3",
+    9, "#3c30a8",
+    "#221a70",
 ]
 
 
@@ -475,28 +508,28 @@ def _make_tolkien_wave_tile(size: int = 64) -> Image.Image:
     # Fine woodcut pen-etching harmonic
     etch = np.sin(24.0 * v + 1.8 * undulation + 0.5 * np.cos(4.0 * u))
 
-    # Base Arda sea sapphire-cerulean (#457d9e -> 69, 125, 158)
-    r = np.full((size, size), 69.0)
-    g = np.full((size, size), 125.0)
+    # Base Hobbit cover cobalt-ultramarine blue (#3d5e9e -> 61, 94, 158)
+    r = np.full((size, size), 61.0)
+    g = np.full((size, size), 94.0)
     b = np.full((size, size), 158.0)
 
-    # Subtle blue-on-blue wave troughs (closely spaced tones)
+    # Whisper-subtle blue-on-blue wave troughs (very closely spaced tones)
     trough = np.clip(-wave, 0.0, 1.0) ** 1.35
-    r -= trough * 11.0
-    g -= trough * 13.0
-    b -= trough * 14.0
+    r -= trough * 2.8
+    g -= trough * 3.2
+    b -= trough * 3.8
 
-    # Subtle blue-on-blue wave crests
+    # Whisper-subtle blue-on-blue wave crests
     crest = np.clip(wave, 0.0, 1.0) ** 1.55
-    r += crest * 9.0
-    g += crest * 11.0
-    b += crest * 11.0
+    r += crest * 2.4
+    g += crest * 2.8
+    b += crest * 3.4
 
     # Gentle horizontal pen lines along wave ridges
-    ridge = (etch > 0.74).astype(np.float64) * 0.35
-    r -= ridge * 8.0
-    g -= ridge * 10.0
-    b -= ridge * 11.0
+    ridge = (etch > 0.78).astype(np.float64) * 0.25
+    r -= ridge * 2.2
+    g -= ridge * 2.6
+    b -= ridge * 3.0
 
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
     rgba[..., 0] = np.clip(r, 0, 255).astype(np.uint8)
@@ -507,7 +540,7 @@ def _make_tolkien_wave_tile(size: int = 64) -> Image.Image:
 
 
 def _make_western_water_tile(size: int = 64) -> Image.Image:
-    """Create a rich Royal Blue water texture tile."""
+    """Create a rich Cobalt Blue water texture tile."""
     y, x = np.mgrid[0:size, 0:size].astype(np.float64)
     u = 2.0 * np.pi * x / size
     v = 2.0 * np.pi * y / size
@@ -515,14 +548,14 @@ def _make_western_water_tile(size: int = 64) -> Image.Image:
     undulation = 0.40 * np.sin(4.0 * u + 0.5 * np.sin(2.0 * v)) + 0.20 * np.cos(6.0 * u - 2.0 * v)
     wave = np.sin(12.0 * v + 1.2 * undulation)
 
-    # Rich Royal Blue base (#2458c2 -> 36, 88, 194)
-    r = np.full((size, size), 36.0)
-    g = np.full((size, size), 88.0)
-    b = np.full((size, size), 194.0)
+    # Rich Cobalt Blue base (#0649c4 -> 6, 73, 196)
+    r = np.full((size, size), 6.0)
+    g = np.full((size, size), 73.0)
+    b = np.full((size, size), 196.0)
 
-    r += wave * 6.0
-    g += wave * 8.0
-    b += wave * 11.0
+    r += wave * 4.0
+    g += wave * 7.0
+    b += wave * 12.0
 
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
     rgba[..., 0] = np.clip(r, 0, 255).astype(np.uint8)
@@ -614,7 +647,7 @@ def _make_mgs_water_tile(size: int = 64) -> Image.Image:
 
 
 def _make_blueprint_grid_tile(size: int = 64) -> Image.Image:
-    """Create a seamless engineering cyanotype blueprint grid water texture tile."""
+    """Create a seamless, subtle engineering cyanotype blueprint grid water texture tile."""
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
     # Deep cyanotype Prussian blue (#0c335e -> 12, 51, 94)
     rgba[..., 0] = 12
@@ -622,22 +655,28 @@ def _make_blueprint_grid_tile(size: int = 64) -> Image.Image:
     rgba[..., 2] = 94
     rgba[..., 3] = 255
 
-    step_minor = max(1, size // 8)
+    lw = max(1, size // 64)
+    step_minor = max(1, size // 4)
     step_major = max(1, size // 2)
-    # Subtle minor grid lines (#113e70)
-    rgba[::step_minor, :, 0] = 17
-    rgba[::step_minor, :, 1] = 62
-    rgba[::step_minor, :, 2] = 112
-    rgba[:, ::step_minor, 0] = 17
-    rgba[:, ::step_minor, 1] = 62
-    rgba[:, ::step_minor, 2] = 112
-    # Crisp major drafting grid lines (#19528f)
-    rgba[::step_major, :, 0] = 25
-    rgba[::step_major, :, 1] = 82
-    rgba[::step_major, :, 2] = 143
-    rgba[:, ::step_major, 0] = 25
-    rgba[:, ::step_major, 1] = 82
-    rgba[:, ::step_major, 2] = 143
+
+    # Minor drafting sub-grid lines (#2364a8 -> 35, 100, 168)
+    for off in range(lw):
+        rgba[off::step_minor, :, 0] = 35
+        rgba[off::step_minor, :, 1] = 100
+        rgba[off::step_minor, :, 2] = 168
+        rgba[:, off::step_minor, 0] = 35
+        rgba[:, off::step_minor, 1] = 100
+        rgba[:, off::step_minor, 2] = 168
+
+    # Major drafting grid lines (#3e8ad4 -> 62, 138, 212)
+    for off in range(lw):
+        rgba[off::step_major, :, 0] = 62
+        rgba[off::step_major, :, 1] = 138
+        rgba[off::step_major, :, 2] = 212
+        rgba[:, off::step_major, 0] = 62
+        rgba[:, off::step_major, 1] = 138
+        rgba[:, off::step_major, 2] = 212
+
     return Image.fromarray(rgba, mode="RGBA")
 
 
@@ -661,8 +700,30 @@ def _make_synthwave_grid_tile(size: int = 64) -> Image.Image:
     return Image.fromarray(rgba, mode="RGBA")
 
 
+def _make_cyber_water_tile(size: int = 64) -> Image.Image:
+    """Create a seamless Cyber Futuristic City midnight-indigo neon-reflection water tile."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float64)
+    u = 2.0 * np.pi * x / size
+    v = 2.0 * np.pi * y / size
+
+    ripple = np.sin(16.0 * v + 0.6 * np.sin(4.0 * u))
+    glint = (np.sin(24.0 * v + 1.2 * np.cos(6.0 * u)) > 0.78).astype(np.float64)
+
+    # Deep starry midnight cyber-indigo (#080644 -> 8, 6, 68)
+    r = np.full((size, size), 8.0) + ripple * 4.0 + glint * 14.0
+    g = np.full((size, size), 6.0) + ripple * 3.0 + glint * 10.0
+    b = np.full((size, size), 68.0) + ripple * 10.0 + glint * 24.0
+
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    rgba[..., 0] = np.clip(r, 0, 255).astype(np.uint8)
+    rgba[..., 1] = np.clip(g, 0, 255).astype(np.uint8)
+    rgba[..., 2] = np.clip(b, 0, 255).astype(np.uint8)
+    rgba[..., 3] = 255
+    return Image.fromarray(rgba, mode="RGBA")
+
+
 def update_mgs_water_sprite(repo_root: str) -> None:
-    """Idempotently add 'mgs_water_texture', 'blueprint_grid', and 'synthwave_grid' to v4/dark sprite sheets."""
+    """Idempotently add 'mgs_water_texture', 'blueprint_grid', 'synthwave_grid', and 'cyber_water_grid' to v4/dark sprite sheets."""
     sprite_dirs = [
         os.path.join(repo_root, "tileserver", "sprites", "v4"),
         os.path.join(repo_root, "app", "static", "vendor", "protomaps-assets", "sprites", "v4"),
@@ -671,11 +732,13 @@ def update_mgs_water_sprite(repo_root: str) -> None:
         ("mgs_water_texture", 0, _make_mgs_water_tile(64)),
         ("blueprint_grid", 64, _make_blueprint_grid_tile(64)),
         ("synthwave_grid", 128, _make_synthwave_grid_tile(64)),
+        ("cyber_water_grid", 192, _make_cyber_water_tile(64)),
     ]
     tiles_2x = [
         ("mgs_water_texture", 0, _make_mgs_water_tile(128)),
         ("blueprint_grid", 128, _make_blueprint_grid_tile(128)),
         ("synthwave_grid", 256, _make_synthwave_grid_tile(128)),
+        ("cyber_water_grid", 384, _make_cyber_water_tile(128)),
     ]
 
     for sdir in sprite_dirs:
@@ -695,8 +758,9 @@ def update_mgs_water_sprite(repo_root: str) -> None:
 
             tsize = 64 * scale
             im = Image.open(png_path).convert("RGBA")
+            new_w = max(im.width, 256 * scale)
             new_h = max(im.height, base_y + tsize)
-            canvas = Image.new("RGBA", (im.width, new_h), (0, 0, 0, 0))
+            canvas = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 0))
             canvas.paste(im, (0, 0))
             for name, x_off, tile_img in tile_list:
                 canvas.paste(tile_img, (x_off, base_y))
@@ -728,6 +792,8 @@ def build_themed_style(
     font_scale: float = 1.0,
     use_choropleth: bool = True,
     hide_road_labels: bool = False,
+    halo_scale: float = 1.0,
+    halo_blur: float = 0.15,
 ) -> dict:
     style = copy.deepcopy(light_tpl)
     style["name"] = name
@@ -937,7 +1003,11 @@ def build_themed_style(
                         "source-layer": "water",
                         "paint": {
                             "fill-pattern": water_pattern,
-                            "fill-opacity": 0.55,
+                            "fill-opacity": (
+                                0.30
+                                if water_pattern == "tolkien_water_waves"
+                                else (0.62 if water_pattern == "blueprint_grid" else 0.55)
+                            ),
                         },
                     }
                 )
@@ -1066,6 +1136,8 @@ def build_themed_style(
                 poi_halo=palette["label_halo"],
                 strip_uppercase=strip_uppercase,
                 font_scale=font_scale,
+                halo_scale=halo_scale,
+                halo_blur=halo_blur,
             )
 
         new_layers.append(lyr)
@@ -1096,6 +1168,8 @@ def _apply_custom_fonts(
     poi_halo: str,
     strip_uppercase: bool = False,
     font_scale: float = 1.0,
+    halo_scale: float = 1.0,
+    halo_blur: float = 0.15,
 ) -> None:
     layout = lyr.setdefault("layout", {})
     paint = lyr.setdefault("paint", {})
@@ -1103,10 +1177,13 @@ def _apply_custom_fonts(
     if strip_uppercase and "text-transform" in layout:
         del layout["text-transform"]
 
-    paint["text-halo-blur"] = 0.15
+    paint["text-halo-blur"] = halo_blur
 
     def _s(val: float) -> int:
         return int(round(val * font_scale))
+
+    def _h(val: float) -> float:
+        return round(val * halo_scale, 2)
 
     if lid == "places_country":
         layout["text-font"] = [bold_font]
@@ -1120,14 +1197,14 @@ def _apply_custom_fonts(
         ]
         paint["text-color"] = country_color
         paint["text-halo-color"] = country_halo
-        paint["text-halo-width"] = 2.2
+        paint["text-halo-width"] = _h(2.2)
     elif lid == "places_region":
         lyr["minzoom"] = 3
         layout["text-font"] = [bold_font]
         layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 3, _s(11), 7, _s(16)]
         paint["text-color"] = region_color
         paint["text-halo-color"] = region_halo
-        paint["text-halo-width"] = 1.8
+        paint["text-halo-width"] = _h(1.8)
     elif lid == "places_locality":
         lyr["minzoom"] = 3
         layout["text-font"] = [
@@ -1146,14 +1223,14 @@ def _apply_custom_fonts(
         ]
         paint["text-color"] = city_color
         paint["text-halo-color"] = city_halo
-        paint["text-halo-width"] = 2.0
+        paint["text-halo-width"] = _h(2.0)
     elif lid == "places_subplace":
         layout["text-font"] = [reg_font]
         if font_scale != 1.0:
             layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 10, _s(11), 14, _s(15)]
         paint["text-color"] = subplace_color
         paint["text-halo-color"] = subplace_halo
-        paint["text-halo-width"] = 1.8
+        paint["text-halo-width"] = _h(1.8)
     elif lid in ("water_label_ocean", "water_label_lakes", "water_waterway_label"):
         layout["text-font"] = [italic_font]
         if font_scale != 1.0 and lid == "water_label_ocean":
@@ -1161,12 +1238,12 @@ def _apply_custom_fonts(
             layout["text-letter-spacing"] = 0.06
         paint["text-color"] = water_color
         paint["text-halo-color"] = water_halo
-        paint["text-halo-width"] = 1.8
+        paint["text-halo-width"] = _h(1.8)
     elif lid == "earth_label_islands":
         layout["text-font"] = [italic_font]
         paint["text-color"] = subplace_color
         paint["text-halo-color"] = subplace_halo
-        paint["text-halo-width"] = 1.6
+        paint["text-halo-width"] = _h(1.6)
     elif lid == "roads_shields":
         layout["text-font"] = [bold_font]
         paint["text-color"] = shield_color
@@ -1176,13 +1253,13 @@ def _apply_custom_fonts(
             layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 12, _s(11), 16, _s(15)]
         paint["text-color"] = road_color
         paint["text-halo-color"] = road_halo
-        paint["text-halo-width"] = 1.8
+        paint["text-halo-width"] = _h(1.8)
     elif lid == "pois":
         layout["text-font"] = [reg_font]
         if font_scale != 1.0:
             layout["text-size"] = _s(12)
         paint["text-halo-color"] = poi_halo
-        paint["text-halo-width"] = 1.6
+        paint["text-halo-width"] = _h(1.6)
     else:
         layout["text-font"] = [reg_font]
 
@@ -1195,175 +1272,182 @@ def _apply_custom_fonts(
 
 
 MATRIX_PALETTE = {
-    "water": "#030303",
-    "water_outline": "#27542b",
-    "river": "#193822",
-    "earth": "#1b251a",
-    "lc_grass": "#263822",
-    "lc_barren": "#3d4726",
-    "lc_urban": "#243632",
-    "lc_farm": "#2b4225",
-    "lc_scrub": "#324523",
-    "lc_forest": "#27542b",
-    "park": "#27542b",
-    "wood": "#2d5e31",
-    "scrub": "#46592b",
-    "glacier": "#77a382",
-    "sand": "#616e36",
-    "military": "#5f0a11",
-    "hospital": "#5f0a11",
-    "industrial": "#202e20",
-    "school": "#263822",
-    "zoo": "#27542b",
-    "aerodrome": "#1f2e22",
-    "runway": "#27542b",
-    "pedestrian": "#223322",
+    # All countries and large terrain areas strictly in shades of Matrix green (zero blue fills):
+    # Greens: #111811, #2E3B2A, #063B08, #5C7A4A, #9BAF7A, #008F11, #00FF41
+    # Cold blues, grays, and whites preserved for labels (#eef7fd, #d8ecf8, #c9d9e6, #9DB2C7, #C0C9D1)
+    # Red & black reversed on borders and road accents (pitch-black #050705 casing + bright crimson #ed263a core) for high legibility
+    "water": "#050705",
+    "water_outline": "#008F11",
+    "river": "#193b1c",
+    "earth": "#111811",
+    "lc_grass": "#2E3B2A",
+    "lc_barren": "#384d31",
+    "lc_urban": "#243d25",
+    "lc_farm": "#465e38",
+    "lc_scrub": "#2a4026",
+    "lc_forest": "#063B08",
+    "park": "#0a420c",
+    "wood": "#233d23",
+    "scrub": "#4b663c",
+    "glacier": "#9DB2C7",
+    "sand": "#5C7A4A",
+    "military": "#8c1420",
+    "hospital": "#a61726",
+    "industrial": "#182418",
+    "school": "#2E3B2A",
+    "zoo": "#0a420c",
+    "aerodrome": "#1f301f",
+    "runway": "#5C7A4A",
+    "pedestrian": "#2E3B2A",
     "pier": "#263822",
-    "buildings": "#263822",
-    "buildings_outline": "#616e36",
-    "tunnel": "#1b251a",
-    "highway": "#ad1d1d",
-    "highway_casing": "#5f0a11",
-    "major": "#77a382",
-    "major_casing": "#1f3827",
-    "link": "#616e36",
-    "link_casing": "#1b251a",
-    "minor_a": "#27542b",
-    "minor_b": "#616e36",
-    "minor_casing": "#111810",
-    "railway": "#77a382",
-    # Two-tone country & major borders: dark wine-red with dark charcoal-gray / black
-    "boundary_country_outer": "#383e3c",
-    "boundary_country_casing": "#820f1b",
-    "boundary_country_casing_opacity": 0.95,
-    "boundary_country": "#0b0d0c",
-    "boundary_state_casing": "#2c3230",
-    "boundary_state_casing_opacity": 0.88,
-    "boundary_state": "#961420",
-    # Bright luminous silver-blue label fills
+    "buildings": "#1f331f",
+    "buildings_outline": "#5C7A4A",
+    "tunnel": "#111811",
+    "highway": "#00FF41",
+    "highway_casing": "#050705",
+    "major": "#9BAF7A",
+    "major_casing": "#0b120b",
+    "link": "#ed263a",
+    "link_casing": "#050705",
+    "minor_a": "#264a28",
+    "minor_b": "#5C7A4A",
+    "minor_casing": "#0a0f0a",
+    "railway": "#9DB2C7",
+    # Reversed Red & Black borders: pitch-black outer/casing (#050705) with bright legible crimson-red inner core (#ed263a / #d61f32)
+    "boundary_country_outer": "#050705",
+    "boundary_country_casing": "#050705",
+    "boundary_country_casing_opacity": 0.96,
+    "boundary_country": "#ed263a",
+    "boundary_state_casing": "#050705",
+    "boundary_state_casing_opacity": 0.92,
+    "boundary_state": "#d61f32",
+    # Cold blues, grays, and whites for labels
     "country_label": "#eef7fd",
-    "state_label": "#c8e2f0",
-    "city_label": "#e2f2fa",
-    "subplace_label": "#bdd9ea",
-    "water_label": "#96c5de",
-    "water_halo": "#030504",
-    "road_label": "#c6e0ee",
-    "shield_label": "#e2f2fa",
-    "poi_text": "#b5d6e8",
-    "label_halo": "#030504",
+    "state_label": "#c9d9e6",
+    "city_label": "#d8ecf8",
+    "subplace_label": "#9DB2C7",
+    "water_label": "#789ab8",
+    "water_halo": "#050705",
+    "road_label": "#C0C9D1",
+    "shield_label": "#ff7a88",
+    "poi_text": "#ff7a88",
+    "label_halo": "#050705",
 }
 
 WASTELAND_PALETTE = {
     "water": "#160b05",
-    "water_outline": "#b14518",
-    "river": "#462814",
-    "earth": "#381e0e",
-    # Reverted green changes; rich charred umber/sienna terrain + extra gold/yellow in populated areas
-    "lc_grass": "#592b15",
-    "lc_barren": "#8d3c18",
-    "lc_urban": "#b87c16",
-    "lc_farm": "#7d4a16",
-    "lc_scrub": "#783517",
-    "lc_forest": "#4e2613",
-    "park": "#592b15",
-    "wood": "#462814",
-    "scrub": "#7d3818",
-    "glacier": "#fea20f",
-    "sand": "#c47d16",
-    "military": "#8d3c18",
-    "hospital": "#b85216",
-    "industrial": "#9c6415",
-    "school": "#e0a81b",
-    "zoo": "#7d3818",
-    "aerodrome": "#6e4614",
-    "runway": "#8d3c18",
-    "pedestrian": "#b07416",
-    "pier": "#8f5b14",
-    "buildings": "#d49619",
+    "water_outline": "#c95118",
+    "river": "#522d14",
+    "earth": "#3d200e",
+    # Slightly brighter burnt-orange & atomic amber terrain (no drastic changes)
+    "lc_grass": "#633015",
+    "lc_barren": "#9e4418",
+    "lc_urban": "#c98616",
+    "lc_farm": "#8a5216",
+    "lc_scrub": "#873c17",
+    "lc_forest": "#572a13",
+    "park": "#633015",
+    "wood": "#4d2b14",
+    "scrub": "#8f3f18",
+    "glacier": "#ffaa14",
+    "sand": "#d48616",
+    "military": "#9e4418",
+    "hospital": "#cc5b16",
+    "industrial": "#ab6d15",
+    "school": "#ebb01c",
+    "zoo": "#8f3f18",
+    "aerodrome": "#7a4d14",
+    "runway": "#9e4418",
+    "pedestrian": "#bd7c16",
+    "pier": "#9c6314",
+    "buildings": "#de9e1a",
     "buildings_outline": "#ffe001",
-    "tunnel": "#381e0e",
+    "tunnel": "#3d200e",
     "highway": "#ffe001",
-    "highway_casing": "#6c3317",
-    "major": "#ef5b18",
-    "major_casing": "#462814",
-    "link": "#d14f19",
-    "link_casing": "#462814",
-    "minor_a": "#8d3c18",
-    "minor_b": "#c97e18",
+    "highway_casing": "#783817",
+    "major": "#ff681a",
+    "major_casing": "#4d2b14",
+    "link": "#e85a19",
+    "link_casing": "#4d2b14",
+    "minor_a": "#a34618",
+    "minor_b": "#db8818",
     "minor_casing": "#261309",
-    "railway": "#fe7d14",
-    "boundary_country_casing": "#d14f19",
+    "railway": "#ff8519",
+    "boundary_country_casing": "#e85a19",
     "boundary_country": "#ffe001",
-    "boundary_state_casing": "#6c3317",
-    "boundary_state": "#fc6a17",
+    "boundary_state_casing": "#783817",
+    "boundary_state": "#ff7417",
     "country_label": "#ffe001",
-    "state_label": "#fea20f",
+    "state_label": "#ffaa14",
     "city_label": "#ffe45e",
-    "subplace_label": "#feb426",
-    "water_label": "#fc6a17",
+    "subplace_label": "#feb82b",
+    "water_label": "#ff7417",
     "water_halo": "#120804",
-    "road_label": "#febe3a",
+    "road_label": "#fec240",
     "shield_label": "#ffe001",
-    "poi_text": "#febe3a",
+    "poi_text": "#fec240",
     "label_halo": "#140a05",
 }
 
 TOLKIEN_PALETTE = {
-    "water": "#457d9e",
-    "water_outline": "#1f445c",
-    "river": "#366c8c",
-    "earth": "#ede2c8",
-    "lc_grass": "#9cd184",
-    "lc_barren": "#cfa67e",
-    "lc_urban": "#d4ad82",
-    "lc_farm": "#ebd488",
-    "lc_scrub": "#c49e78",
-    "lc_forest": "#68a85b",
-    "park": "#78b86a",
-    "wood": "#62a355",
-    "scrub": "#c49e78",
-    "glacier": "#d8ecf5",
-    "sand": "#f0de8a",
-    "military": "#9eb8c9",
-    "hospital": "#d98f82",
-    "industrial": "#c7a987",
-    "school": "#f0d478",
-    "zoo": "#8cc474",
-    "aerodrome": "#b8cad6",
-    "runway": "#d4c3a8",
-    "pedestrian": "#e6d4b5",
-    "pier": "#c49e76",
-    "buildings": "#c49a74",
-    "buildings_outline": "#6e4b2e",
-    "tunnel": "#c9b393",
-    "highway": "#e6be50",
-    "highway_casing": "#5e3d1e",
-    "major": "#ebd28d",
-    "major_casing": "#75522d",
-    "link": "#e6cb83",
-    "link_casing": "#7a5732",
-    "minor_a": "#ebdcc0",
-    "minor_b": "#f7efe0",
-    "minor_casing": "#967958",
-    "railway": "#543b24",
-    # Two-tone color-on-color silver/gray borders (outer pewter-slate -> middle metallic silver -> inner iron-gray core)
-    "boundary_country_outer": "#5c646d",
-    "boundary_country_casing": "#d0d8e0",
+    # Incorporates J.R.R. Tolkien's original 1937 'The Hobbit' dust jacket palette:
+    # cobalt/indigo blues (#3b4b87, #305093, #5674ae), forest apple-greens (#74a82e, #63a213, #7ba63b),
+    # rune-border sage (#789748), cream parchment sky (#ede6d0), and charcoal ink (#202125)
+    "water": "#3d5e9e",
+    "water_outline": "#202125",
+    "river": "#305093",
+    "earth": "#ede6d0",
+    "lc_grass": "#7ba63b",
+    "lc_barren": "#5674ae",
+    "lc_urban": "#c7b493",
+    "lc_farm": "#e4dcc4",
+    "lc_scrub": "#789748",
+    "lc_forest": "#63a213",
+    "park": "#74a82e",
+    "wood": "#63a213",
+    "scrub": "#789748",
+    "glacier": "#fcfaf2",
+    "sand": "#e6dbb8",
+    "military": "#6b88bd",
+    "hospital": "#d9b8be",
+    "industrial": "#b8a88a",
+    "school": "#e3d498",
+    "zoo": "#7ba63b",
+    "aerodrome": "#8aa1c9",
+    "runway": "#dcd3bc",
+    "pedestrian": "#e6dec6",
+    "pier": "#b5a486",
+    "buildings": "#b8a382",
+    "buildings_outline": "#202125",
+    "tunnel": "#c4b699",
+    "highway": "#ede6d0",
+    "highway_casing": "#202125",
+    "major": "#7ba63b",
+    "major_casing": "#202125",
+    "link": "#8aa1c9",
+    "link_casing": "#26324d",
+    "minor_a": "#dcd3bc",
+    "minor_b": "#f5f0e1",
+    "minor_casing": "#595347",
+    "railway": "#202125",
+    # Two-tone Hobbit dust-jacket ink & parchment borders (charcoal ink #202125 + cream parchment #ede6d0)
+    "boundary_country_outer": "#202125",
+    "boundary_country_casing": "#ede6d0",
     "boundary_country_casing_opacity": 0.94,
-    "boundary_country": "#363b40",
-    "boundary_state_casing": "#b4bdc6",
-    "boundary_state_casing_opacity": 0.78,
-    "boundary_state": "#484f57",
-    "country_label": "#26140c",
-    "state_label": "#4a2716",
-    "city_label": "#24130b",
-    "subplace_label": "#422718",
-    "water_label": "#0d283b",
-    "water_halo": "#f5faff",
-    "road_label": "#3d2417",
-    "shield_label": "#26140c",
-    "poi_text": "#3b2314",
-    "label_halo": "#fcfcfa",
+    "boundary_country": "#202125",
+    "boundary_state_casing": "#ede6d0",
+    "boundary_state_casing_opacity": 0.80,
+    "boundary_state": "#3b4b87",
+    "country_label": "#18191c",
+    "state_label": "#263466",
+    "city_label": "#18191c",
+    "subplace_label": "#2d3820",
+    "water_label": "#101b3b",
+    "water_halo": "#ffffff",
+    "road_label": "#202125",
+    "shield_label": "#18191c",
+    "poi_text": "#263466",
+    "label_halo": "#ffffff",
 }
 
 PALADIN_PALETTE = {
@@ -1485,6 +1569,64 @@ ICY_BLUE_PALETTE = {
     "label_halo": "#ffffff",
 }
 
+# "Clover": Green counterpart to Icy Blue — vibrant shamrock/emerald water, bright mint-clover land,
+# crisp monochromatic green terrain zones, simplified white/mint roads, road labels hidden, Exo 2 typography
+CLOVER_PALETTE = {
+    "water": "#46b862",
+    "water_outline": "#217537",
+    "river": "#38a653",
+    "earth": "#dcf7e2",
+    "lc_grass": "#a8e8b7",
+    "lc_barren": "#edfbf0",
+    "lc_urban": "#b8edc5",
+    "lc_farm": "#c5f2d0",
+    "lc_scrub": "#8fdb9f",
+    "lc_forest": "#78d18b",
+    "park": "#78d18b",
+    "wood": "#6ac77e",
+    "scrub": "#9ae0a9",
+    "glacier": "#ffffff",
+    "sand": "#e3faea",
+    "military": "#a3e3b2",
+    "hospital": "#c2f0cd",
+    "industrial": "#b2ebc0",
+    "school": "#c8f2d2",
+    "zoo": "#88d99a",
+    "aerodrome": "#bdeec9",
+    "runway": "#f2fcf5",
+    "pedestrian": "#e3faea",
+    "pier": "#c4f0ce",
+    "buildings": "#b8edc5",
+    "buildings_outline": "#7ac98d",
+    "tunnel": "#ccf2d5",
+    "highway": "#ffffff",
+    "highway_casing": "#6cc280",
+    "major": "#f7fff9",
+    "major_casing": "#82cf94",
+    "link": "#f0fcf3",
+    "link_casing": "#96dba6",
+    "minor_a": "#ebf9ee",
+    "minor_b": "#ffffff",
+    "minor_casing": "#aae3b7",
+    "railway": "#5cb570",
+    "boundary_country_casing": "#cef5d7",
+    "boundary_country_casing_opacity": 0.72,
+    "boundary_country": "#0d3818",
+    "boundary_state_casing": "#dff9e5",
+    "boundary_state_casing_opacity": 0.58,
+    "boundary_state": "#378f4d",
+    "country_label": "#092610",
+    "state_label": "#113d1c",
+    "city_label": "#092610",
+    "subplace_label": "#174f25",
+    "water_label": "#0d471c",
+    "water_halo": "#80dba0",
+    "road_label": "#174f25",
+    "shield_label": "#092610",
+    "poi_text": "#13421f",
+    "label_halo": "#ffffff",
+}
+
 BLUEPRINT_PALETTE = {
     "water": "#0c335e",
     "water_outline": "#e6f5ff",
@@ -1603,10 +1745,10 @@ SYNTHWAVE_PALETTE = {
 }
 
 WESTERN_PALETTE = {
-    # Royal blue water + geographic/physical zone colors from Geological Survey reference
-    "water": "#2458c2",
-    "water_outline": "#12347a",
-    "river": "#2e67d6",
+    # Vivid Cobalt Blue water + geographic/physical zone colors from Geological Survey reference
+    "water": "#0649c4",
+    "water_outline": "#00266e",
+    "river": "#1258db",
     "earth": "#d6be8e",
     "lc_grass": "#e8d258",
     "lc_barren": "#8f6b44",
@@ -1652,12 +1794,75 @@ WESTERN_PALETTE = {
     "state_label": "#42220e",
     "city_label": "#1c0f06",
     "subplace_label": "#3d2412",
-    "water_label": "#eef4ff",
-    "water_halo": "#102e6e",
+    "water_label": "#ffffff",
+    "water_halo": "#021847",
     "road_label": "#331e0e",
     "shield_label": "#1f1107",
     "poi_text": "#38200e",
-    "label_halo": "#fcf6e8",
+    "label_halo": "#ffffff",
+}
+
+CYBER_PALETTE = {
+    # Cyber Futuristic City Color Palette (https://i.pinimg.com/474x/56/48/92/5648920f5a78ea8b09f812fc8aa5f7e0.jpg):
+    # Physical/geographic zone color mapping (no choropleth):
+    # Swatches: #5137b4, #aa4bdd, #ff40aa, #ffcfd5, #72c4ff, #c7ffff
+    # Midnight Starry Indigo Water & Sky: #080644, #240c55, #404bb1
+    "water": "#080644",
+    "water_outline": "#72c4ff",
+    "river": "#5137b4",
+    "earth": "#1d1666",
+    "lc_grass": "#3b32a6",
+    "lc_barren": "#733ec7",
+    "lc_urban": "#b24ce0",
+    "lc_farm": "#444eb8",
+    "lc_scrub": "#5638b8",
+    "lc_forest": "#281f88",
+    "park": "#342b99",
+    "wood": "#231a7a",
+    "scrub": "#5e3ec2",
+    "glacier": "#c7ffff",
+    "sand": "#8e46d6",
+    "military": "#8545d4",
+    "hospital": "#ff40aa",
+    "industrial": "#404bb1",
+    "school": "#6b3ec7",
+    "zoo": "#5137b4",
+    "aerodrome": "#382d9c",
+    "runway": "#72c4ff",
+    "pedestrian": "#5137b4",
+    "pier": "#404bb1",
+    "buildings": "#404bb1",
+    "buildings_outline": "#72c4ff",
+    "tunnel": "#15104d",
+    "highway": "#c7ffff",
+    "highway_casing": "#1d1666",
+    "major": "#ff40aa",
+    "major_casing": "#240c55",
+    "link": "#aa4bdd",
+    "link_casing": "#1d1666",
+    "minor_a": "#5137b4",
+    "minor_b": "#72c4ff",
+    "minor_casing": "#120d42",
+    "railway": "#ffcfd5",
+    # Two-tone Holographic Ice-Cyan & Electric Indigo-Amethyst borders
+    "boundary_country_outer": "#5137b4",
+    "boundary_country_casing": "#080644",
+    "boundary_country_casing_opacity": 0.94,
+    "boundary_country": "#c7ffff",
+    "boundary_state_casing": "#240c55",
+    "boundary_state_casing_opacity": 0.80,
+    "boundary_state": "#72c4ff",
+    # Cyber Neon Blush (#ffcfd5), Ice-Cyan (#c7ffff), and Holographic Sky-Blue (#72c4ff) typography
+    "country_label": "#ffcfd5",
+    "state_label": "#c7ffff",
+    "city_label": "#c7ffff",
+    "subplace_label": "#72c4ff",
+    "water_label": "#72c4ff",
+    "water_halo": "#05042b",
+    "road_label": "#ffcfd5",
+    "shield_label": "#c7ffff",
+    "poi_text": "#ff40aa",
+    "label_halo": "#06042e",
 }
 
 JURASSIC_PALETTE = {
@@ -1751,7 +1956,7 @@ def main() -> None:
             bold_font="Black Ops One Regular",
             reg_font="Quantico Regular",
             italic_font="Quantico Italic",
-            urban_fill_color="#c48816",
+            urban_fill_color="#d49216",
         ),
         "tolkien": build_themed_style(
             light_tpl=light_tpl,
@@ -1760,12 +1965,14 @@ def main() -> None:
             country_colors=TOLKIEN_COUNTRY_COLORS,
             state_colors=TOLKIEN_STATE_COLORS,
             palette=TOLKIEN_PALETTE,
-            bold_font="Charm Bold",
-            reg_font="Charm Regular",
-            italic_font="Charm Italic",
+            bold_font="Eagle Lake Bold",
+            reg_font="Eagle Lake Regular",
+            italic_font="Eagle Lake Italic",
             water_pattern="tolkien_water_waves",
             strip_uppercase=True,
-            font_scale=1.18,
+            font_scale=1.02,
+            halo_scale=0.64,
+            halo_blur=0.0,
         ),
         "paladin": build_themed_style(
             light_tpl=light_tpl,
@@ -1787,6 +1994,20 @@ def main() -> None:
             country_colors=None,
             state_colors=None,
             palette=ICY_BLUE_PALETTE,
+            bold_font="Exo 2 Bold",
+            reg_font="Exo 2 Regular",
+            italic_font="Exo 2 Italic",
+            strip_uppercase=True,
+            use_choropleth=False,
+            hide_road_labels=True,
+        ),
+        "clover": build_themed_style(
+            light_tpl=light_tpl,
+            name="Clover",
+            sprite_name="v4/light",
+            country_colors=None,
+            state_colors=None,
+            palette=CLOVER_PALETTE,
             bold_font="Exo 2 Bold",
             reg_font="Exo 2 Regular",
             italic_font="Exo 2 Italic",
@@ -1828,13 +2049,15 @@ def main() -> None:
             country_colors=None,
             state_colors=None,
             palette=WESTERN_PALETTE,
-            bold_font="Josefin Sans Bold",
-            reg_font="Josefin Sans Regular",
-            italic_font="Josefin Sans Italic",
+            bold_font="Montserrat Bold",
+            reg_font="Montserrat SemiBold",
+            italic_font="Montserrat SemiBold Italic",
             urban_fill_color="#c97a32",
             water_pattern="western_water_waves",
             use_choropleth=False,
-            font_scale=1.08,
+            font_scale=1.06,
+            halo_scale=0.64,
+            halo_blur=0.0,
         ),
         "jurassic": build_themed_style(
             light_tpl=light_tpl,
@@ -1850,6 +2073,21 @@ def main() -> None:
             strip_uppercase=True,
             use_choropleth=False,
             font_scale=1.08,
+        ),
+        "cyber": build_themed_style(
+            light_tpl=light_tpl,
+            name="Cyber",
+            sprite_name="v4/dark",
+            country_colors=None,
+            state_colors=None,
+            palette=CYBER_PALETTE,
+            bold_font="Tektur Bold",
+            reg_font="Tektur Regular",
+            italic_font="Tektur Italic",
+            urban_fill_color="#b24ce0",
+            water_pattern="cyber_water_grid",
+            use_choropleth=False,
+            font_scale=1.06,
         ),
     }
 

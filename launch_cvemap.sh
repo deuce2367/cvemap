@@ -100,6 +100,8 @@ echo "==> Starting ${CONTAINER_NAME} (${IMAGE}) ..."
 docker run "${DOCKER_ARGS[@]}" "${IMAGE}" >/dev/null
 
 echo "CVEMAP started in container '${CONTAINER_NAME}'!"
-echo "  - Raster Viewer (XYZ & WMS) : http://localhost:${PORT}/"
-echo "  - Vector Viewer (WebGL MVT) : http://localhost:${PORT}/modern"
-echo "  - TileServer-GL Direct      : http://localhost:${TS_PORT}/"
+echo "  - Raster Viewer (XYZ & WMS)       : http://localhost:${PORT}/"
+echo "  - Vector Viewer (WebGL MVT)       : http://localhost:${PORT}/modern"
+echo "  - 3D Globe Viewer (MapLibre v5)   : http://localhost:${PORT}/globe"
+echo "  - 3D Globe Viewer (OpenGlobus)    : http://localhost:${PORT}/openglobus"
+echo "  - TileServer-GL Direct            : http://localhost:${TS_PORT}/"

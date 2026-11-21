@@ -802,8 +802,24 @@
         "visibility": "visible"
       },
       "paint": {
-        "line-color": "#7592B8",
-        "line-opacity": 0.55,
+        "line-color": {
+          "base": 1,
+          "stops": [
+            [
+              6,
+              "#7A98BF"
+            ],
+            [
+              10,
+              "#A69B8E"
+            ],
+            [
+              11,
+              "#D47D4A"
+            ]
+          ]
+        },
+        "line-opacity": 0.65,
         "line-width": 1.3
       }
     },
