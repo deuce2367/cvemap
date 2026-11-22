@@ -1125,6 +1125,11 @@
       "type": "fill",
       "source": "protomaps",
       "source-layer": "water",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
       "paint": {
         "fill-pattern": "cyber_water_grid",
         "fill-opacity": 0.55

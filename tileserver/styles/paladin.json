@@ -1222,6 +1222,11 @@
       "type": "fill",
       "source": "protomaps",
       "source-layer": "water",
+      "filter": [
+        "==",
+        "$type",
+        "Polygon"
+      ],
       "paint": {
         "fill-pattern": "mgs_water_texture",
         "fill-opacity": 0.55

@@ -179,7 +179,7 @@ def render_sdf_glyph(
         return None
 
     w24, h24 = mask24.size
-    adv24 = max(1, int(round(font24.getlength(ch)))) + (1 if dilate_iters > 0 else 0)
+    adv24 = max(1, int(round(font24.getlength(ch))))
 
     if w24 == 0 or h24 == 0 or ch.isspace():
         return encode_glyph_msg(
@@ -407,30 +407,30 @@ def main() -> None:
             0,
             0.0,
         ),
-        # Tolkien (Eagle Lake Middle-earth calligraphic fantasy script - SIL OFL 1.1)
+        # Tolkien (Cinzel Decorative + IM Fell English + Fondamento - SIL OFL 1.1)
         (
-            "Eagle Lake Bold",
-            os.path.join(tolkien_font_dir, "EagleLake-Regular.ttf"),
+            "Cinzel Decorative Bold",
+            os.path.join(tolkien_font_dir, "CinzelDecorative-Bold.ttf"),
             os.path.join(ts_fonts, "Noto Sans Medium"),
             1,
-            1,
+            0,
             0.0,
         ),
         (
-            "Eagle Lake Regular",
-            os.path.join(tolkien_font_dir, "EagleLake-Regular.ttf"),
+            "IM Fell English Regular",
+            os.path.join(tolkien_font_dir, "IMFellEnglish-Regular.ttf"),
             os.path.join(ts_fonts, "Noto Sans Regular"),
             1,
-            0,
+            1,
             0.0,
         ),
         (
-            "Eagle Lake Italic",
-            os.path.join(tolkien_font_dir, "EagleLake-Regular.ttf"),
+            "Fondamento Italic",
+            os.path.join(tolkien_font_dir, "Fondamento-Italic.ttf"),
             os.path.join(ts_fonts, "Noto Sans Italic"),
             1,
-            0,
-            0.14,
+            1,
+            0.0,
         ),
         # Paladin (Orbitron robotic/metallic geometric - SIL OFL 1.1)
         (

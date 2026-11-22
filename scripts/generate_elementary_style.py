@@ -113,31 +113,31 @@ WASTELAND_STATE_COLORS = [
 TOLKIEN_COUNTRY_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#ede6d0",  # The Hobbit Dust-Jacket Cream Parchment Sky (#ede6d0)
-    2, "#74a82e",  # The Hobbit Forest Canopy Apple-Green (#74a82e)
-    3, "#5674ae",  # Misty Mountains Cobalt-Ultramarine Blue (#5674ae)
-    4, "#789748",  # Hobbit Rune-Border Sage-Olive Green (#789748)
-    5, "#e0d8be",  # Warm Vellum Parchment Ivory
-    6, "#7ba63b",  # Hobbiton Rolling Hill Meadow Green (#7ba63b)
-    7, "#6b88bd",  # Blue Mountains Slate-Cobalt
-    8, "#c7b493",  # Lonely Mountain Warm Sandstone
-    9, "#d9cfd2",  # Pale Rising-Sun Blush Ivory (#d9d1d4)
-    "#ede6d0",
+    1, "#9fb183",  # Valinor / Falas Soft Moss-Sage Green
+    2, "#8ba968",  # Aman / West Beleriand Meadow Green
+    3, "#b4b196",  # Harad / Middle-earth Weathered Parchment-Sand
+    4, "#7c9470",  # Taur-im-Duinath / Doriath Deep Woodland Olive
+    5, "#a6b89a",  # East Beleriand / Ossiriand Sage-Celadon
+    6, "#839c5e",  # Numenor / Greenwood Rich Moss-Olive
+    7, "#8494a1",  # Ered Luin / Blue Mountains Highland Slate
+    8, "#a8a68a",  # Northern Waste / Rhun Olive-Parchment
+    9, "#b3bfa8",  # Lothlann / Ard-Galen Pale Silvery-Sage
+    "#9fb183",
 ]
 
 TOLKIEN_STATE_COLORS = [
     "match",
     ["get", "color_id"],
-    1, "#f0ead6",
-    2, "#7ab032",
-    3, "#5c7ab5",
-    4, "#7f9e4d",
-    5, "#e4dcc4",
-    6, "#81ad40",
-    7, "#728fc4",
-    8, "#ccb999",
-    9, "#ded4d7",
-    "#f0ead6",
+    1, "#a5b789",
+    2, "#91af6e",
+    3, "#bab79c",
+    4, "#829a76",
+    5, "#acbe9f",
+    6, "#89a264",
+    7, "#8a9aa7",
+    8, "#aeac90",
+    9, "#b9c5ae",
+    "#a5b789",
 ]
 
 PALADIN_COUNTRY_COLORS = [
@@ -508,10 +508,10 @@ def _make_tolkien_wave_tile(size: int = 64) -> Image.Image:
     # Fine woodcut pen-etching harmonic
     etch = np.sin(24.0 * v + 1.8 * undulation + 0.5 * np.cos(4.0 * u))
 
-    # Base Hobbit cover cobalt-ultramarine blue (#3d5e9e -> 61, 94, 158)
-    r = np.full((size, size), 61.0)
-    g = np.full((size, size), 94.0)
-    b = np.full((size, size), 158.0)
+    # Base Belegaer / Great Sea cerulean-steel blue (#3b70a6 -> 59, 112, 166)
+    r = np.full((size, size), 59.0)
+    g = np.full((size, size), 112.0)
+    b = np.full((size, size), 166.0)
 
     # Whisper-subtle blue-on-blue wave troughs (very closely spaced tones)
     trough = np.clip(-wave, 0.0, 1.0) ** 1.35
@@ -794,6 +794,7 @@ def build_themed_style(
     hide_road_labels: bool = False,
     halo_scale: float = 1.0,
     halo_blur: float = 0.15,
+    border_scale: float = 1.0,
 ) -> dict:
     style = copy.deepcopy(light_tpl)
     style["name"] = name
@@ -903,7 +904,11 @@ def build_themed_style(
             paint["fill-opacity"] = (
                 ["interpolate", ["linear"], ["zoom"], 5, 0.0, 6.2, 0.45, 8.0, 0.0]
                 if use_choropleth
-                else ["interpolate", ["linear"], ["zoom"], 0, 0.96, 6, 0.94, 9, 0.78, 13, 0.55]
+                else (
+                    ["interpolate", ["linear"], ["zoom"], 0, 0.94, 5, 0.88, 8, 0.48, 11, 0.22]
+                    if name == "Tolkien"
+                    else ["interpolate", ["linear"], ["zoom"], 0, 0.96, 6, 0.94, 9, 0.78, 13, 0.55]
+                )
             )
             new_layers.append(lyr)
             continue
@@ -954,7 +959,7 @@ def build_themed_style(
                 ["in", ["get", "pmap:kind"], ["literal", ["farmland", "orchard", "vineyard"]]],
                 palette["lc_farm"],
                 ["in", ["get", "pmap:kind"], ["literal", ["bare_rock", "scree"]]],
-                palette["lc_barren"],
+                palette.get("rock", palette["lc_barren"]),
                 ["==", ["get", "pmap:kind"], "glacier"],
                 palette["glacier"],
                 ["in", ["get", "pmap:kind"], ["literal", ["sand", "beach"]]],
@@ -1001,6 +1006,7 @@ def build_themed_style(
                         "type": "fill",
                         "source": "protomaps",
                         "source-layer": "water",
+                        "filter": ["==", "$type", "Polygon"],
                         "paint": {
                             "fill-pattern": water_pattern,
                             "fill-opacity": (
@@ -1066,13 +1072,16 @@ def build_themed_style(
             else:
                 paint["line-color"] = palette["minor_a"]
         elif lid == "boundaries_country":
+            def _bw(w: float) -> float:
+                return round(w * border_scale, 2)
+
             if "boundary_country_outer" in palette:
                 outer_lyr = copy.deepcopy(lyr)
                 outer_lyr["id"] = "boundaries_country_outer"
                 outer_lyr["paint"] = {
                     "line-color": palette["boundary_country_outer"],
                     "line-opacity": 0.85,
-                    "line-width": ["interpolate", ["linear"], ["zoom"], 0, 2.6, 2, 4.2, 5, 6.8, 8, 9.8, 12, 12.5],
+                    "line-width": ["interpolate", ["linear"], ["zoom"], 0, _bw(2.6), 2, _bw(4.2), 5, _bw(6.8), 8, _bw(9.8), 12, _bw(12.5)],
                 }
                 new_layers.append(outer_lyr)
             casing_lyr = copy.deepcopy(lyr)
@@ -1081,31 +1090,34 @@ def build_themed_style(
                 "line-color": palette["boundary_country_casing"],
                 "line-opacity": palette.get("boundary_country_casing_opacity", 0.55),
                 "line-width": (
-                    ["interpolate", ["linear"], ["zoom"], 0, 1.6, 2, 2.5, 5, 4.2, 8, 6.0, 12, 7.6]
+                    ["interpolate", ["linear"], ["zoom"], 0, _bw(1.6), 2, _bw(2.5), 5, _bw(4.2), 8, _bw(6.0), 12, _bw(7.6)]
                     if "boundary_country_outer" in palette
-                    else ["interpolate", ["linear"], ["zoom"], 0, 2.2, 2, 3.5, 5, 6.0, 8, 9.0, 12, 11.5]
+                    else ["interpolate", ["linear"], ["zoom"], 0, _bw(2.2), 2, _bw(3.5), 5, _bw(6.0), 8, _bw(9.0), 12, _bw(11.5)]
                 ),
             }
             new_layers.append(casing_lyr)
             paint["line-color"] = palette["boundary_country"]
             paint["line-width"] = (
-                ["interpolate", ["linear"], ["zoom"], 0, 0.7, 2, 1.0, 5, 1.5, 8, 2.1, 12, 2.6]
+                ["interpolate", ["linear"], ["zoom"], 0, _bw(0.7), 2, _bw(1.0), 5, _bw(1.5), 8, _bw(2.1), 12, _bw(2.6)]
                 if "boundary_country_outer" in palette
-                else ["interpolate", ["linear"], ["zoom"], 0, 0.9, 2, 1.3, 5, 1.9, 8, 2.6, 12, 3.2]
+                else ["interpolate", ["linear"], ["zoom"], 0, _bw(0.9), 2, _bw(1.3), 5, _bw(1.9), 8, _bw(2.6), 12, _bw(3.2)]
             )
             new_layers.append(lyr)
             continue
         elif lid == "boundaries":
+            def _sw(w: float) -> float:
+                return round(w * border_scale, 2)
+
             casing_lyr = copy.deepcopy(lyr)
             casing_lyr["id"] = "boundaries_casing"
             casing_lyr["paint"] = {
                 "line-color": palette["boundary_state_casing"],
                 "line-opacity": palette.get("boundary_state_casing_opacity", 0.45),
-                "line-width": ["interpolate", ["linear"], ["zoom"], 3, 1.8, 6, 3.4, 10, 5.2],
+                "line-width": ["interpolate", ["linear"], ["zoom"], 3, _sw(1.8), 6, _sw(3.4), 10, _sw(5.2)],
             }
             new_layers.append(casing_lyr)
             paint["line-color"] = palette["boundary_state"]
-            paint["line-width"] = ["interpolate", ["linear"], ["zoom"], 3, 0.8, 6, 1.3, 10, 1.9]
+            paint["line-width"] = ["interpolate", ["linear"], ["zoom"], 3, _sw(0.8), 6, _sw(1.3), 10, _sw(1.9)]
             new_layers.append(lyr)
             continue
 
@@ -1187,7 +1199,7 @@ def _apply_custom_fonts(
 
     if lid == "places_country":
         layout["text-font"] = [bold_font]
-        layout["text-letter-spacing"] = 0.03 if strip_uppercase else 0.08
+        layout["text-letter-spacing"] = 0.0 if strip_uppercase else 0.08
         layout["text-size"] = [
             "interpolate", ["linear"], ["zoom"],
             1, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 10], _s(9), _s(12)],
@@ -1235,7 +1247,7 @@ def _apply_custom_fonts(
         layout["text-font"] = [italic_font]
         if font_scale != 1.0 and lid == "water_label_ocean":
             layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 2, _s(12), 6, _s(18), 10, _s(22)]
-            layout["text-letter-spacing"] = 0.06
+            layout["text-letter-spacing"] = 0.0 if strip_uppercase else 0.06
         paint["text-color"] = water_color
         paint["text-halo-color"] = water_halo
         paint["text-halo-width"] = _h(1.8)
@@ -1390,63 +1402,66 @@ WASTELAND_PALETTE = {
 }
 
 TOLKIEN_PALETTE = {
-    # Incorporates J.R.R. Tolkien's original 1937 'The Hobbit' dust jacket palette:
-    # cobalt/indigo blues (#3b4b87, #305093, #5674ae), forest apple-greens (#74a82e, #63a213, #7ba63b),
-    # rune-border sage (#789748), cream parchment sky (#ede6d0), and charcoal ink (#202125)
-    "water": "#3d5e9e",
-    "water_outline": "#202125",
-    "river": "#305093",
-    "earth": "#ede6d0",
-    "lc_grass": "#7ba63b",
-    "lc_barren": "#5674ae",
-    "lc_urban": "#c7b493",
-    "lc_farm": "#e4dcc4",
-    "lc_scrub": "#789748",
-    "lc_forest": "#63a213",
-    "park": "#74a82e",
-    "wood": "#63a213",
-    "scrub": "#789748",
-    "glacier": "#fcfaf2",
-    "sand": "#e6dbb8",
-    "military": "#6b88bd",
-    "hospital": "#d9b8be",
-    "industrial": "#b8a88a",
-    "school": "#e3d498",
-    "zoo": "#7ba63b",
-    "aerodrome": "#8aa1c9",
-    "runway": "#dcd3bc",
-    "pedestrian": "#e6dec6",
-    "pier": "#b5a486",
-    "buildings": "#b8a382",
-    "buildings_outline": "#202125",
-    "tunnel": "#c4b699",
-    "highway": "#ede6d0",
-    "highway_casing": "#202125",
-    "major": "#7ba63b",
-    "major_casing": "#202125",
-    "link": "#8aa1c9",
-    "link_casing": "#26324d",
-    "minor_a": "#dcd3bc",
-    "minor_b": "#f5f0e1",
-    "minor_casing": "#595347",
-    "railway": "#202125",
-    # Two-tone Hobbit dust-jacket ink & parchment borders (charcoal ink #202125 + cream parchment #ede6d0)
-    "boundary_country_outer": "#202125",
-    "boundary_country_casing": "#ede6d0",
-    "boundary_country_casing_opacity": 0.94,
-    "boundary_country": "#202125",
-    "boundary_state_casing": "#ede6d0",
-    "boundary_state_casing_opacity": 0.80,
-    "boundary_state": "#3b4b87",
-    "country_label": "#18191c",
-    "state_label": "#263466",
-    "city_label": "#18191c",
-    "subplace_label": "#2d3820",
-    "water_label": "#101b3b",
+    # Middle-earth / Arda & Beleriand Physical Zone Palette (no choropleths):
+    # Belegaer cerulean-steel water (#3b70a6), moss & meadow greens (#8ba968, #a6b88e, #6c8c5a, #557848),
+    # Gondolin / Ered Luin stone whites & silver-grays (#e0ded6, #d4d8dc, #a4abb2, #dfe3e6, #f5f7fa),
+    # subtle parchment tans (#cbbd9b, #b5a482), heraldic gold accents (#e6bc45, #d4a838, #f2c94c),
+    # skinny dark charcoal-ink borders (#111312), and bright white (#ffffff) labels with skinny black outlines
+    "water": "#3b70a6",
+    "water_outline": "#141816",
+    "river": "#4a84bd",
+    "earth": "#e4e2da",
+    "lc_grass": "#8ba968",
+    "lc_barren": "#b8ab8e",
+    "rock": "#a6acb2",
+    "lc_urban": "#c2c6ca",
+    "lc_farm": "#a6b88e",
+    "lc_scrub": "#a89674",
+    "lc_forest": "#557848",
+    "park": "#6c8c5a",
+    "wood": "#4a6b3e",
+    "scrub": "#8c9c72",
+    "glacier": "#f5f7fa",
+    "sand": "#cbbd9b",
+    "military": "#9aa1a8",
+    "hospital": "#d9d4c7",
+    "industrial": "#b4bac0",
+    "school": "#d6c89e",
+    "zoo": "#8ba968",
+    "aerodrome": "#bcc2c7",
+    "runway": "#e8ebed",
+    "pedestrian": "#eceff2",
+    "pier": "#c2c6ca",
+    "buildings": "#dfe3e6",
+    "buildings_outline": "#4a5056",
+    "tunnel": "#b8bec4",
+    "highway": "#e6bc45",
+    "highway_casing": "#1c201e",
+    "major": "#d4a838",
+    "major_casing": "#242823",
+    "link": "#e0c268",
+    "link_casing": "#333832",
+    "minor_a": "#d8dce0",
+    "minor_b": "#f7f9fa",
+    "minor_casing": "#5c636a",
+    "railway": "#2b3036",
+    # Skinny dark charcoal-ink borders
+    "boundary_country_casing": "#2b2f2a",
+    "boundary_country_casing_opacity": 0.65,
+    "boundary_country": "#111312",
+    "boundary_state_casing": "#3b4038",
+    "boundary_state_casing_opacity": 0.45,
+    "boundary_state": "#1e221f",
+    # Black ink fill with bright white outline
+    "country_label": "#111312",
+    "state_label": "#1c201e",
+    "city_label": "#111312",
+    "subplace_label": "#1c201e",
+    "water_label": "#0d1b2e",
     "water_halo": "#ffffff",
-    "road_label": "#202125",
-    "shield_label": "#18191c",
-    "poi_text": "#263466",
+    "road_label": "#181c19",
+    "shield_label": "#111312",
+    "poi_text": "#1c201e",
     "label_halo": "#ffffff",
 }
 
@@ -1962,17 +1977,20 @@ def main() -> None:
             light_tpl=light_tpl,
             name="Tolkien",
             sprite_name="v4/light",
-            country_colors=TOLKIEN_COUNTRY_COLORS,
-            state_colors=TOLKIEN_STATE_COLORS,
+            country_colors=None,
+            state_colors=None,
             palette=TOLKIEN_PALETTE,
-            bold_font="Eagle Lake Bold",
-            reg_font="Eagle Lake Regular",
-            italic_font="Eagle Lake Italic",
+            bold_font="Cinzel Decorative Bold",
+            reg_font="IM Fell English Regular",
+            italic_font="Fondamento Italic",
+            urban_fill_color="#d4d8dc",
             water_pattern="tolkien_water_waves",
             strip_uppercase=True,
-            font_scale=1.02,
+            use_choropleth=False,
+            font_scale=1.14,
             halo_scale=0.64,
             halo_blur=0.0,
+            border_scale=0.34,
         ),
         "paladin": build_themed_style(
             light_tpl=light_tpl,

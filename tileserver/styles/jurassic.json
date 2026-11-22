@@ -5915,7 +5915,7 @@
           10,
           24
         ],
-        "text-letter-spacing": 0.06,
+        "text-letter-spacing": 0.0,
         "text-max-width": 9
       },
       "paint": {
@@ -12971,7 +12971,7 @@
           22,
           2
         ],
-        "text-letter-spacing": 0.03
+        "text-letter-spacing": 0.0
       },
       "paint": {
         "text-color": "#211206",
