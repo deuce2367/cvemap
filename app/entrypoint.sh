@@ -50,7 +50,11 @@ TILESERVER_PID=$!
 echo "${TILESERVER_PID}" > /tmp/tileserver.pid
 
 echo "==> Starting CVEMAP Gateway on port ${CVEMAP_PORT} ..."
-python3 -m uvicorn server.main:app --host 0.0.0.0 --port "${CVEMAP_PORT}" &
+python3 -m uvicorn server.main:app \
+  --host 0.0.0.0 \
+  --port "${CVEMAP_PORT}" \
+  --proxy-headers \
+  --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-*}" &
 UVICORN_PID=$!
 echo "${UVICORN_PID}" > /tmp/uvicorn.pid
 

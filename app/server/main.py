@@ -4,8 +4,10 @@ import io
 import logging
 import math
 import os
+import re
 import sqlite3
 import urllib.error
+import urllib.parse
 import urllib.request
 from xml.sax.saxutils import escape as xml_escape
 
@@ -63,12 +65,153 @@ def startup_event() -> None:
 
 
 @app.middleware("http")
-async def disable_sprite_and_theme_cache(request: Request, call_next):
+async def reverse_proxy_and_cache_headers(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=204,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+                "Access-Control-Allow-Headers": "Range, Content-Type, Origin, Accept, X-Requested-With, X-CVEMAP-Origin",
+                "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges, ETag",
+            },
+        )
     response = await call_next(request)
     p = request.url.path
     if p.startswith("/static/vendor/protomaps-assets/sprites/") or p.startswith("/static/vendor/openglobus/"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers.setdefault("Access-Control-Allow-Origin", "*")
+    response.headers.setdefault("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+    response.headers.setdefault(
+        "Access-Control-Allow-Headers",
+        "Range, Content-Type, Origin, Accept, X-Requested-With, X-CVEMAP-Origin",
+    )
+    response.headers.setdefault(
+        "Access-Control-Expose-Headers",
+        "Content-Length, Content-Range, Accept-Ranges, ETag",
+    )
     return response
+
+
+def _first_header_token(val: str | None) -> str:
+    if not val:
+        return ""
+    return val.split(",")[0].strip()
+
+
+def _parse_rfc7239_forwarded(header_val: str | None) -> tuple[str, str]:
+    """Extract (proto, host) from the first element of an RFC 7239 Forwarded header."""
+    if not header_val:
+        return "", ""
+    first_hop = header_val.split(",")[0]
+    proto = ""
+    host = ""
+    for part in first_hop.split(";"):
+        if "=" not in part:
+            continue
+        k, v = part.split("=", 1)
+        k = k.strip().lower()
+        v = v.strip().strip('"')
+        if k == "proto" and not proto:
+            proto = v.lower()
+        elif k == "host" and not host:
+            host = v
+    return proto, host
+
+
+def _resolve_public_origin(request: Request) -> tuple[str, str, str, str]:
+    """Determine (public_origin, scheme, host, prefix) behind any TLS-terminating reverse proxy or K8s ingress."""
+    env_origin = os.environ.get("CVEMAP_PUBLIC_ORIGIN", "").strip().rstrip("/")
+    if env_origin and re.match(r"^https?://", env_origin, re.IGNORECASE):
+        parsed = urllib.parse.urlsplit(env_origin)
+        prefix = parsed.path.rstrip("/")
+        scheme = parsed.scheme.lower()
+        host = parsed.netloc
+        return f"{scheme}://{host}{prefix}", scheme, host, prefix
+
+    # 1. Explicit client origin hint (?origin=... or X-CVEMAP-Origin)
+    hint_raw = (
+        request.query_params.get("origin")
+        or request.headers.get("x-cvemap-origin")
+        or ""
+    ).strip().rstrip("/")
+    if hint_raw and re.match(r"^https?://[^\s/]+", hint_raw, re.IGNORECASE):
+        parsed = urllib.parse.urlsplit(hint_raw)
+        if parsed.scheme.lower() in ("http", "https") and parsed.netloc:
+            prefix = parsed.path.rstrip("/")
+            if not prefix:
+                raw_pfx = (
+                    _first_header_token(request.headers.get("x-forwarded-prefix"))
+                    or _first_header_token(request.headers.get("x-forwarded-path"))
+                    or str(request.scope.get("root_path") or "")
+                    or os.environ.get("CVEMAP_ROOT_PATH", "")
+                ).strip()
+                if raw_pfx and raw_pfx != "/":
+                    prefix = "/" + raw_pfx.strip("/")
+            scheme = parsed.scheme.lower()
+            host = parsed.netloc
+            return f"{scheme}://{host}{prefix}", scheme, host, prefix
+
+    fwd_proto, fwd_host = _parse_rfc7239_forwarded(request.headers.get("forwarded"))
+
+    # 2. Resolve public scheme (http vs https)
+    proto_candidates = [
+        _first_header_token(request.headers.get("x-forwarded-proto")),
+        _first_header_token(request.headers.get("x-forwarded-protocol")),
+        _first_header_token(request.headers.get("x-forwarded-scheme")),
+        _first_header_token(request.headers.get("x-scheme")),
+        _first_header_token(request.headers.get("x-url-scheme")),
+        _first_header_token(request.headers.get("cloudfront-forwarded-proto")),
+        fwd_proto,
+    ]
+    if (
+        _first_header_token(request.headers.get("x-forwarded-ssl")).lower() == "on"
+        or _first_header_token(request.headers.get("front-end-https")).lower() == "on"
+    ):
+        proto_candidates.insert(0, "https")
+
+    # If the browser page itself sent Origin: https://... or Referer: https://..., the client is on HTTPS
+    for browser_hdr in (request.headers.get("origin"), request.headers.get("referer")):
+        if browser_hdr and browser_hdr.strip().lower().startswith("https://"):
+            proto_candidates.append("https")
+
+    proto_candidates.append(request.url.scheme or "http")
+
+    scheme = "http"
+    for cand in proto_candidates:
+        c_low = (cand or "").strip().lower()
+        if c_low == "https":
+            scheme = "https"
+            break
+        if c_low == "http":
+            scheme = "http"
+
+    # 3. Resolve public host
+    host = (
+        _first_header_token(request.headers.get("x-forwarded-host"))
+        or fwd_host
+        or _first_header_token(request.headers.get("x-original-host"))
+        or _first_header_token(request.headers.get("host"))
+        or request.url.netloc
+        or "localhost"
+    )
+
+    # Strip redundant default ports (:80 / :443)
+    if scheme == "https" and (host.endswith(":443") or host.endswith(":80")):
+        host = host.rsplit(":", 1)[0]
+    elif scheme == "http" and host.endswith(":80"):
+        host = host.rsplit(":", 1)[0]
+
+    # 4. Resolve optional path prefix (e.g. X-Forwarded-Prefix: /cvemap)
+    raw_prefix = (
+        _first_header_token(request.headers.get("x-forwarded-prefix"))
+        or _first_header_token(request.headers.get("x-forwarded-path"))
+        or str(request.scope.get("root_path") or "")
+        or os.environ.get("CVEMAP_ROOT_PATH", "")
+    ).strip()
+    prefix = ("/" + raw_prefix.strip("/")) if (raw_prefix and raw_prefix.strip("/")) else ""
+
+    return f"{scheme}://{host}{prefix}", scheme, host, prefix
 
 
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -151,7 +294,7 @@ def api_get_maps() -> JSONResponse:
 
 @app.get("/api/style/{dataset}/{style}.json")
 def api_get_browser_style(dataset: str, style: str, request: Request) -> JSONResponse:
-    base_origin = str(request.base_url).rstrip("/")
+    base_origin, _, _, _ = _resolve_public_origin(request)
     style_obj = build_browser_style_json(
         data_dir=DATA_DIR,
         tileserver_template_dir=TILESERVER_TEMPLATE_DIR,
@@ -185,12 +328,33 @@ def _resolve_tileserver_style(style: str, dataset: str | None = None) -> str:
     return st
 
 
-def proxy_internal_url(url: str) -> Response:
+def proxy_internal_url(
+    url: str,
+    forward_headers: dict[str, str] | None = None,
+    public_tileserver_base: str | None = None,
+    public_scheme: str | None = None,
+    public_host: str | None = None,
+) -> Response:
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "CVEMAP-Proxy/1.0"})
+        hdrs = {"User-Agent": "CVEMAP-Proxy/1.0"}
+        if forward_headers:
+            hdrs.update(forward_headers)
+        req = urllib.request.Request(url, headers=hdrs)
         with urllib.request.urlopen(req, timeout=30) as resp:
             body = resp.read()
             ctype = resp.headers.get("Content-Type", "application/octet-stream")
+            if public_tileserver_base and any(
+                t in ctype.lower() for t in ("json", "xml", "html", "text", "javascript")
+            ):
+                try:
+                    txt = body.decode("utf-8")
+                    txt = txt.replace(TILESERVER_INTERNAL_URL, public_tileserver_base)
+                    txt = txt.replace("http://localhost:8080", public_tileserver_base)
+                    if public_scheme == "https" and public_host:
+                        txt = txt.replace(f"http://{public_host}/", f"https://{public_host}/")
+                    body = txt.encode("utf-8")
+                except Exception:
+                    pass
             return Response(content=body, media_type=ctype)
     except urllib.error.HTTPError as exc:
         raise HTTPException(status_code=exc.code, detail=exc.reason)
@@ -200,8 +364,24 @@ def proxy_internal_url(url: str) -> Response:
 
 @app.get("/tileserver/{path:path}")
 def tileserver_proxy(path: str, request: Request) -> Response:
+    base_origin, scheme, host, prefix = _resolve_public_origin(request)
     qs = f"?{request.url.query}" if request.url.query else ""
-    return proxy_internal_url(f"{TILESERVER_INTERNAL_URL}/{path}{qs}")
+    ts_prefix = f"{prefix}/tileserver"
+    fwd_headers = {
+        "Host": host,
+        "X-Forwarded-Proto": scheme,
+        "X-Forwarded-Protocol": scheme,
+        "X-Forwarded-Host": host,
+        "X-Forwarded-Path": ts_prefix,
+        "X-Forwarded-Prefix": ts_prefix,
+    }
+    return proxy_internal_url(
+        f"{TILESERVER_INTERNAL_URL}/{path}{qs}",
+        forward_headers=fwd_headers,
+        public_tileserver_base=f"{base_origin}/tileserver",
+        public_scheme=scheme,
+        public_host=host,
+    )
 
 
 @app.get("/xyz/{style}/{z}/{x}/{y}.png")
@@ -477,7 +657,8 @@ def _collect_wms_layer_entries() -> list[tuple[str, str, list[float] | None]]:
 
 
 def _render_wms_capabilities(request: Request, version: str) -> Response:
-    base_url = xml_escape(str(request.url).split("?")[0])
+    base_origin, _, _, _ = _resolve_public_origin(request)
+    base_url = xml_escape(f"{base_origin}/wms")
     layer_entries = _collect_wms_layer_entries()
 
     if version.startswith("1.3"):

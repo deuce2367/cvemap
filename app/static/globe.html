@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <script>
+        if (window.location.protocol === 'https:') {
+            var cspMeta = document.createElement('meta');
+            cspMeta.httpEquiv = 'Content-Security-Policy';
+            cspMeta.content = 'upgrade-insecure-requests';
+            document.head.appendChild(cspMeta);
+        }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/static/boulder.svg">
     <title>CVEMAP - 3D Globe Viewer</title>
     <meta charset="utf-8" />
@@ -243,10 +251,70 @@
             el.innerText += prefix + (detail ? ": " + detail : "") + "\n\n";
         }
 
+        var appBasePath = window.location.pathname.replace(/\/(modern|globe|openglobus)\/?$/, '').replace(/\/+$/, '');
+        var appBaseOrigin = window.location.origin + appBasePath;
+
+        function normalizeUrlOrigin(urlStr) {
+            if (!urlStr || typeof urlStr !== 'string') return urlStr;
+            if (urlStr.indexOf('pmtiles://') === 0) {
+                return 'pmtiles://' + normalizeUrlOrigin(urlStr.slice('pmtiles://'.length));
+            }
+            if (urlStr.indexOf('/') === 0) {
+                if (appBasePath && urlStr.indexOf(appBasePath + '/') !== 0) {
+                    return window.location.origin + appBasePath + urlStr;
+                }
+                return window.location.origin + urlStr;
+            }
+            if (/^https?:\/\//i.test(urlStr)) {
+                var rewritten = urlStr.replace(/^https?:\/\/[^\/]+/i, window.location.origin);
+                if (appBasePath) {
+                    var pathPart = rewritten.slice(window.location.origin.length);
+                    if (pathPart.indexOf(appBasePath + '/') !== 0) {
+                        rewritten = window.location.origin + appBasePath + pathPart;
+                    }
+                }
+                return rewritten;
+            }
+            return urlStr;
+        }
+
+        function normalizeStyleForCurrentOrigin(style) {
+            if (!style || typeof style !== 'object') return style;
+            if (typeof style.glyphs === 'string') {
+                style.glyphs = normalizeUrlOrigin(style.glyphs);
+            }
+            if (typeof style.sprite === 'string') {
+                style.sprite = normalizeUrlOrigin(style.sprite);
+            } else if (Array.isArray(style.sprite)) {
+                style.sprite = style.sprite.map(function(sp) {
+                    if (sp && typeof sp === 'object' && typeof sp.url === 'string') {
+                        sp.url = normalizeUrlOrigin(sp.url);
+                    }
+                    return sp;
+                });
+            }
+            if (style.sources && typeof style.sources === 'object') {
+                Object.keys(style.sources).forEach(function(k) {
+                    var src = style.sources[k];
+                    if (!src || typeof src !== 'object') return;
+                    if (typeof src.url === 'string') {
+                        src.url = normalizeUrlOrigin(src.url);
+                    }
+                    if (Array.isArray(src.tiles)) {
+                        src.tiles = src.tiles.map(normalizeUrlOrigin);
+                    }
+                });
+            }
+            return style;
+        }
+
         // Dual-compatible PMTiles protocol (MapLibre v3 callback + MapLibre v4/v5 Promise API)
         try {
             var pmtilesProto = new pmtiles.Protocol();
             maplibregl.addProtocol("pmtiles", function(params, arg2) {
+                if (params && typeof params.url === 'string') {
+                    params = Object.assign({}, params, { url: normalizeUrlOrigin(params.url) });
+                }
                 if (typeof arg2 === "function") {
                     return pmtilesProto.tile(params, arg2);
                 }
@@ -705,14 +773,14 @@
 
         function loadStyleJson(styleId, cb) {
             if (!targetLayer) return;
-            var apiUrl = "/api/style/" + encodeURIComponent(layerName) + "/" + encodeURIComponent(styleId) + ".json?t=" + Date.now();
+            var apiUrl = "/api/style/" + encodeURIComponent(layerName) + "/" + encodeURIComponent(styleId) + ".json?origin=" + encodeURIComponent(appBaseOrigin) + "&t=" + Date.now();
             fetch(apiUrl)
                 .then(function(res) {
                     if (!res.ok) throw new Error("HTTP " + res.status + " loading " + apiUrl);
                     return res.json();
                 })
                 .then(function(style) {
-                    cb(style);
+                    cb(normalizeStyleForCurrentOrigin(style));
                 })
                 .catch(function(err) {
                     reportError("STYLE LOAD FAILED", err);
@@ -863,7 +931,10 @@
                     zoom: viewState.zoom,
                     pitch: viewState.pitch || 0,
                     bearing: viewState.bearing || 0,
-                    maxPitch: 85
+                    maxPitch: 85,
+                    transformRequest: function(url) {
+                        return { url: normalizeUrlOrigin(url) };
+                    }
                 });
 
                 mlMap.addControl(new maplibregl.NavigationControl({
@@ -916,7 +987,10 @@
                         center: [viewState.lng, viewState.lat],
                         zoom: Math.max(0, viewState.zoom - 3.5),
                         interactive: false,
-                        attributionControl: false
+                        attributionControl: false,
+                        transformRequest: function(url) {
+                            return { url: normalizeUrlOrigin(url) };
+                        }
                     });
                 } catch (miniErr) {
                     document.getElementById('minimap').style.display = 'none';

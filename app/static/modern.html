@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <script>
+        if (window.location.protocol === 'https:') {
+            var cspMeta = document.createElement('meta');
+            cspMeta.httpEquiv = 'Content-Security-Policy';
+            cspMeta.content = 'upgrade-insecure-requests';
+            document.head.appendChild(cspMeta);
+        }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/static/boulder.svg">
     <title>CVEMAP - Vector Viewer</title>
     <meta charset="utf-8" />
@@ -113,9 +121,71 @@
             document.getElementById('viewer-select').value = 'vector';
         });
 
+        var appBasePath = window.location.pathname.replace(/\/(modern|globe|openglobus)\/?$/, '').replace(/\/+$/, '');
+        var appBaseOrigin = window.location.origin + appBasePath;
+
+        function normalizeUrlOrigin(urlStr) {
+            if (!urlStr || typeof urlStr !== 'string') return urlStr;
+            if (urlStr.indexOf('pmtiles://') === 0) {
+                return 'pmtiles://' + normalizeUrlOrigin(urlStr.slice('pmtiles://'.length));
+            }
+            if (urlStr.indexOf('/') === 0) {
+                if (appBasePath && urlStr.indexOf(appBasePath + '/') !== 0) {
+                    return window.location.origin + appBasePath + urlStr;
+                }
+                return window.location.origin + urlStr;
+            }
+            if (/^https?:\/\//i.test(urlStr)) {
+                var rewritten = urlStr.replace(/^https?:\/\/[^\/]+/i, window.location.origin);
+                if (appBasePath) {
+                    var pathPart = rewritten.slice(window.location.origin.length);
+                    if (pathPart.indexOf(appBasePath + '/') !== 0) {
+                        rewritten = window.location.origin + appBasePath + pathPart;
+                    }
+                }
+                return rewritten;
+            }
+            return urlStr;
+        }
+
+        function normalizeStyleForCurrentOrigin(style) {
+            if (!style || typeof style !== 'object') return style;
+            if (typeof style.glyphs === 'string') {
+                style.glyphs = normalizeUrlOrigin(style.glyphs);
+            }
+            if (typeof style.sprite === 'string') {
+                style.sprite = normalizeUrlOrigin(style.sprite);
+            } else if (Array.isArray(style.sprite)) {
+                style.sprite = style.sprite.map(function(sp) {
+                    if (sp && typeof sp === 'object' && typeof sp.url === 'string') {
+                        sp.url = normalizeUrlOrigin(sp.url);
+                    }
+                    return sp;
+                });
+            }
+            if (style.sources && typeof style.sources === 'object') {
+                Object.keys(style.sources).forEach(function(k) {
+                    var src = style.sources[k];
+                    if (!src || typeof src !== 'object') return;
+                    if (typeof src.url === 'string') {
+                        src.url = normalizeUrlOrigin(src.url);
+                    }
+                    if (Array.isArray(src.tiles)) {
+                        src.tiles = src.tiles.map(normalizeUrlOrigin);
+                    }
+                });
+            }
+            return style;
+        }
+
         try {
             let protocol = new pmtiles.Protocol();
-            maplibregl.addProtocol("pmtiles", protocol.tile);
+            maplibregl.addProtocol("pmtiles", function(params, callback) {
+                if (params && typeof params.url === 'string') {
+                    params = Object.assign({}, params, { url: normalizeUrlOrigin(params.url) });
+                }
+                return protocol.tile(params, callback);
+            });
         } catch (e) {
             console.error("PMTiles protocol registration failed", e);
         }
@@ -471,7 +541,7 @@
 
         function loadStyle(styleId, callback) {
             if (!styleId || !targetLayer) return;
-            var styleEndpoint = '/api/style/' + encodeURIComponent(layerName) + '/' + encodeURIComponent(styleId) + '.json?v=' + new Date().getTime();
+            var styleEndpoint = '/api/style/' + encodeURIComponent(layerName) + '/' + encodeURIComponent(styleId) + '.json?origin=' + encodeURIComponent(appBaseOrigin) + '&v=' + new Date().getTime();
             fetch(styleEndpoint)
                 .then(function(res) {
                     if (!res.ok) throw new Error("HTTP " + res.status + " fetching " + styleEndpoint);
@@ -483,7 +553,7 @@
                 })
                 .then(function(style) {
                     if (style) {
-                        callback(style);
+                        callback(normalizeStyleForCurrentOrigin(style));
                     }
                 })
                 .catch(function(callbackErr) {
@@ -584,7 +654,10 @@
                         style: style,
                         center: [0, 0],
                         zoom: 4,
-                        hash: true
+                        hash: true,
+                        transformRequest: function(url) {
+                            return { url: normalizeUrlOrigin(url) };
+                        }
                     });
                 } catch (webglErr) {
                     console.warn("WebGL initialization failed, switching to server-rendered fallback:", webglErr);
@@ -638,7 +711,10 @@
                         center: map.getCenter(),
                         zoom: Math.max(0, map.getZoom() - 5),
                         interactive: false,
-                        attributionControl: false
+                        attributionControl: false,
+                        transformRequest: function(url) {
+                            return { url: normalizeUrlOrigin(url) };
+                        }
                     });
 
                     function syncWebGLMinimap() {
