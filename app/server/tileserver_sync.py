@@ -19,9 +19,9 @@ TILESERVER_STYLES = [
     "black",
     "black_and_white",
     "blueprint",
-    "clover",
     "cyber",
     "dark",
+    "dune",
     "dusk_rose",
     "elementary",
     "flat",
@@ -43,12 +43,6 @@ TILESERVER_STYLES = [
 ]
 
 OPENMAPTILES_STYLE_DEFS: dict[str, dict[str, str]] = {
-    "fiord": {
-        "title": "Fiord",
-        "vendor_dir": "fiord-color",
-        "sprite": "fiord-color/sprite",
-        "browser_sprite": "fiord-color/sprites/sprite",
-    },
     "maptiler_basic": {
         "title": "MapTiler Basic",
         "vendor_dir": "maptiler-basic",
@@ -99,8 +93,8 @@ def make_dataset_style_id(dataset_name: str, style_id: str) -> str:
 def format_style_title(style_id: str) -> str:
     if style_id in (
         "blueprint",
-        "clover",
         "cyber",
+        "dune",
         "elementary",
         "icy_blue",
         "jurassic",
@@ -432,16 +426,29 @@ def discover_vector_datasets(data_dir: str) -> list[dict]:
 def adapt_style_schema(style_obj: dict, pmap_prefix: bool) -> dict:
     """Ensure Protomaps style property names match the active PMTiles schema (v3-alpha pmap:* vs v4 unprefixed)."""
     text = json.dumps(style_obj)
-    if pmap_prefix:
-        return json.loads(text)
-    # Modern Protomaps v4+ uses unprefixed kind, kind_detail, min_zoom, population_rank,
-    # and stores boundary admin levels in numeric kind_detail instead of pmap:min_admin_level
-    text = text.replace('"pmap:min_admin_level"', '"kind_detail"')
-    text = text.replace('"pmap:kind"', '"kind"')
-    text = text.replace('"pmap:kind_detail"', '"kind_detail"')
-    text = text.replace('"pmap:min_zoom"', '"min_zoom"')
-    text = text.replace('"pmap:population_rank"', '"population_rank"')
-    return json.loads(text)
+    if not pmap_prefix:
+        # Modern Protomaps v4+ uses unprefixed kind, kind_detail, min_zoom, population_rank,
+        # and stores boundary admin levels in numeric kind_detail instead of pmap:min_admin_level
+        text = text.replace('"pmap:min_admin_level"', '"kind_detail"')
+        text = text.replace('"pmap:kind"', '"kind"')
+        text = text.replace('"pmap:kind_detail"', '"kind_detail"')
+        text = text.replace('"pmap:min_zoom"', '"min_zoom"')
+        text = text.replace('"pmap:population_rank"', '"population_rank"')
+    adapted = json.loads(text)
+    en_name_expr = [
+        "coalesce",
+        ["get", "name:en"],
+        ["get", "name:latin"],
+        ["get", "pgf:name"],
+        ["get", "name"],
+    ]
+    for lyr in adapted.get("layers", []):
+        if lyr.get("type") == "symbol":
+            lid = lyr.get("id", "")
+            layout = lyr.get("layout")
+            if isinstance(layout, dict) and "text-field" in layout and lid not in ("roads_shields", "roads_oneway", "address_label"):
+                layout["text-field"] = en_name_expr
+    return adapted
 
 
 def _resolve_vendor_dir(tileserver_template_dir: str) -> str:
@@ -1224,14 +1231,31 @@ def _adapt_openmaptiles_style_to_protomaps(
                     continue
                 _enforce_minzoom(lyr, 14)
 
+            lowz_map = {
+                "forest": "forest",
+                "wood": "forest",
+                "grass": "grassland",
+                "grassland": "grassland",
+                "meadow": "grassland",
+                "farmland": "farmland",
+                "scrub": "scrub",
+                "sand": "barren",
+                "beach": "barren",
+                "quarry": "barren",
+                "residential": "urban_area",
+                "urban_area": "urban_area",
+                "glacier": "glacier",
+            }
+            lowz_kinds = list(dict.fromkeys(lowz_map[mk] for mk in mapped_kinds if mk in lowz_map))
+            if ltype == "fill" and (lyr.get("minzoom") or 0) <= 7 and lowz_kinds:
+                lc_clone = copy.deepcopy(lyr)
+                lc_clone["id"] = f"{lid_raw}__lowz"
+                lc_clone["source-layer"] = "landcover"
+                lc_clone["maxzoom"] = 8
+                lc_clone["filter"] = _in_legacy(k_kind, lowz_kinds)
+                new_layers.append(lc_clone)
+
             if mapped_kinds == ["glacier"]:
-                if ltype == "fill" and (lyr.get("minzoom") or 0) <= 7:
-                    lc_clone = copy.deepcopy(lyr)
-                    lc_clone["id"] = f"{lid_raw}__lowz"
-                    lc_clone["source-layer"] = "landcover"
-                    lc_clone["maxzoom"] = 8
-                    lc_clone["filter"] = ["==", k_kind, "glacier"]
-                    new_layers.append(lc_clone)
                 lyr["source-layer"] = "natural" if pmap_prefix else "landuse"
                 lyr["filter"] = ["==", k_kind, "glacier"]
             else:

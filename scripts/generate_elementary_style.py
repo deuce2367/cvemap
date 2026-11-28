@@ -595,6 +595,7 @@ def update_tolkien_water_sprite(repo_root: str) -> None:
             with open(json_path, "r") as f:
                 meta = json.load(f)
             meta.pop("nautical_water_lines", None)
+            meta.pop("sakura_water_waves", None)
 
             tsize = 64 * scale
             im = Image.open(png_path).convert("RGBA")
@@ -722,8 +723,33 @@ def _make_cyber_water_tile(size: int = 64) -> Image.Image:
     return Image.fromarray(rgba, mode="RGBA")
 
 
+def _make_dune_sand_tile(size: int = 64) -> Image.Image:
+    """Create a seamless wind-swept Arrakis deep-desert sand-ripple texture tile in roasted espresso-umber."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float64)
+    u = 2.0 * np.pi * x / size
+    v = 2.0 * np.pi * y / size
+
+    # Wind-carved transverse dune ridge undulation
+    drift = 0.50 * np.sin(3.0 * u + 0.6 * np.sin(2.0 * v)) + 0.25 * np.cos(5.0 * u - 2.0 * v)
+    phase = 10.0 * v + 1.4 * drift
+    wave = np.sin(phase)
+    crest = np.clip(np.sin(phase + 0.4), 0.0, 1.0) ** 2.2
+
+    # Deep roasted espresso-umber base (#2b1a0e -> 43, 26, 14)
+    r = np.full((size, size), 43.0) + wave * 4.5 + crest * 8.0
+    g = np.full((size, size), 26.0) + wave * 2.8 + crest * 5.2
+    b = np.full((size, size), 14.0) + wave * 1.4 + crest * 2.4
+
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    rgba[..., 0] = np.clip(r, 0, 255).astype(np.uint8)
+    rgba[..., 1] = np.clip(g, 0, 255).astype(np.uint8)
+    rgba[..., 2] = np.clip(b, 0, 255).astype(np.uint8)
+    rgba[..., 3] = 255
+    return Image.fromarray(rgba, mode="RGBA")
+
+
 def update_mgs_water_sprite(repo_root: str) -> None:
-    """Idempotently add 'mgs_water_texture', 'blueprint_grid', 'synthwave_grid', and 'cyber_water_grid' to v4/dark sprite sheets."""
+    """Idempotently add 'mgs_water_texture', 'blueprint_grid', 'synthwave_grid', 'cyber_water_grid', and 'dune_sand_waves' to v4/dark sprite sheets."""
     sprite_dirs = [
         os.path.join(repo_root, "tileserver", "sprites", "v4"),
         os.path.join(repo_root, "app", "static", "vendor", "protomaps-assets", "sprites", "v4"),
@@ -733,12 +759,14 @@ def update_mgs_water_sprite(repo_root: str) -> None:
         ("blueprint_grid", 64, _make_blueprint_grid_tile(64)),
         ("synthwave_grid", 128, _make_synthwave_grid_tile(64)),
         ("cyber_water_grid", 192, _make_cyber_water_tile(64)),
+        ("dune_sand_waves", 256, _make_dune_sand_tile(64)),
     ]
     tiles_2x = [
         ("mgs_water_texture", 0, _make_mgs_water_tile(128)),
         ("blueprint_grid", 128, _make_blueprint_grid_tile(128)),
         ("synthwave_grid", 256, _make_synthwave_grid_tile(128)),
         ("cyber_water_grid", 384, _make_cyber_water_tile(128)),
+        ("dune_sand_waves", 512, _make_dune_sand_tile(128)),
     ]
 
     for sdir in sprite_dirs:
@@ -755,10 +783,11 @@ def update_mgs_water_sprite(repo_root: str) -> None:
 
             with open(json_path, "r") as f:
                 meta = json.load(f)
+            meta.pop("inferno_lava_texture", None)
 
             tsize = 64 * scale
             im = Image.open(png_path).convert("RGBA")
-            new_w = max(im.width, 256 * scale)
+            new_w = max(im.width, 320 * scale)
             new_h = max(im.height, base_y + tsize)
             canvas = Image.new("RGBA", (new_w, new_h), (0, 0, 0, 0))
             canvas.paste(im, (0, 0))
@@ -1189,23 +1218,40 @@ def _apply_custom_fonts(
     if strip_uppercase and "text-transform" in layout:
         del layout["text-transform"]
 
+    if lid not in ("roads_shields", "roads_oneway", "address_label"):
+        layout["text-field"] = [
+            "coalesce",
+            ["get", "name:en"],
+            ["get", "name:latin"],
+            ["get", "pgf:name"],
+            ["get", "name"],
+        ]
+
     paint["text-halo-blur"] = halo_blur
 
     def _s(val: float) -> int:
         return int(round(val * font_scale))
+
+    def _sb(val: float) -> int:
+        wide_factor = 0.80 if bold_font == "Dune Rise Bold" else 1.0
+        return int(round(val * font_scale * wide_factor))
+
+    def _sw(val: float) -> int:
+        wide_factor = 0.82 if italic_font == "Dune Rise Italic" else 1.0
+        return int(round(val * font_scale * wide_factor))
 
     def _h(val: float) -> float:
         return round(val * halo_scale, 2)
 
     if lid == "places_country":
         layout["text-font"] = [bold_font]
-        layout["text-letter-spacing"] = 0.0 if strip_uppercase else 0.08
+        layout["text-letter-spacing"] = 0.0 if (strip_uppercase or bold_font == "Dune Rise Bold") else 0.08
         layout["text-size"] = [
             "interpolate", ["linear"], ["zoom"],
-            1, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 10], _s(9), _s(12)],
-            3, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 10], _s(11), _s(16)],
-            6, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 8], _s(13), _s(21)],
-            9, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 7], _s(15), _s(24)],
+            1, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 10], _sb(9), _sb(12)],
+            3, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 10], _sb(11), _sb(16)],
+            6, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 8], _sb(13), _sb(21)],
+            9, ["case", ["<", ["coalesce", ["get", "pmap:population_rank"], ["get", "population_rank"], 0], 7], _sb(15), _sb(24)],
         ]
         paint["text-color"] = country_color
         paint["text-halo-color"] = country_halo
@@ -1213,7 +1259,7 @@ def _apply_custom_fonts(
     elif lid == "places_region":
         lyr["minzoom"] = 3
         layout["text-font"] = [bold_font]
-        layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 3, _s(11), 7, _s(16)]
+        layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 3, _sb(11), 7, _sb(16)]
         paint["text-color"] = region_color
         paint["text-halo-color"] = region_halo
         paint["text-halo-width"] = _h(1.8)
@@ -1236,40 +1282,51 @@ def _apply_custom_fonts(
         paint["text-color"] = city_color
         paint["text-halo-color"] = city_halo
         paint["text-halo-width"] = _h(2.0)
+        layout["text-padding"] = 2
+        layout["icon-padding"] = 2
     elif lid == "places_subplace":
         layout["text-font"] = [reg_font]
         if font_scale != 1.0:
-            layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 10, _s(11), 14, _s(15)]
+            layout["text-size"] = ["interpolate", ["exponential", 1.2], ["zoom"], 11, _s(8), 14, _s(14), 18, _s(24)]
         paint["text-color"] = subplace_color
         paint["text-halo-color"] = subplace_halo
         paint["text-halo-width"] = _h(1.8)
     elif lid in ("water_label_ocean", "water_label_lakes", "water_waterway_label"):
         layout["text-font"] = [italic_font]
-        if font_scale != 1.0 and lid == "water_label_ocean":
-            layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 2, _s(12), 6, _s(18), 10, _s(22)]
-            layout["text-letter-spacing"] = 0.0 if strip_uppercase else 0.06
+        if lid in ("water_label_ocean", "water_label_lakes"):
+            layout["text-max-width"] = 5
+            layout["text-padding"] = 1
+        if lid == "water_label_ocean":
+            layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 3, _sw(12), 6, _sw(14), 10, _sw(15)]
+            layout["text-letter-spacing"] = 0.0 if (strip_uppercase or italic_font == "Dune Rise Italic") else 0.06
+        elif lid == "water_label_lakes":
+            layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 3, _sw(12), 6, _sw(14), 10, _sw(15)]
+        elif lid == "water_waterway_label":
+            layout["text-size"] = _sw(13)
         paint["text-color"] = water_color
         paint["text-halo-color"] = water_halo
         paint["text-halo-width"] = _h(1.8)
     elif lid == "earth_label_islands":
         layout["text-font"] = [italic_font]
+        if font_scale != 1.0:
+            layout["text-size"] = _sw(10)
         paint["text-color"] = subplace_color
         paint["text-halo-color"] = subplace_halo
         paint["text-halo-width"] = _h(1.6)
     elif lid == "roads_shields":
-        layout["text-font"] = [bold_font]
+        layout["text-font"] = [reg_font if bold_font == "Dune Rise Bold" else bold_font]
         paint["text-color"] = shield_color
     elif lid in ("roads_labels_major", "roads_labels_minor", "address_label"):
         layout["text-font"] = [reg_font]
         if font_scale != 1.0:
-            layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 12, _s(11), 16, _s(15)]
+            layout["text-size"] = _s(12)
         paint["text-color"] = road_color
         paint["text-halo-color"] = road_halo
         paint["text-halo-width"] = _h(1.8)
     elif lid == "pois":
         layout["text-font"] = [reg_font]
         if font_scale != 1.0:
-            layout["text-size"] = _s(12)
+            layout["text-size"] = ["interpolate", ["linear"], ["zoom"], 17, _s(10), 19, _s(16)]
         paint["text-halo-color"] = poi_halo
         paint["text-halo-width"] = _h(1.6)
     else:
@@ -1333,16 +1390,16 @@ MATRIX_PALETTE = {
     "boundary_state_casing": "#050705",
     "boundary_state_casing_opacity": 0.92,
     "boundary_state": "#d61f32",
-    # Cold blues, grays, and whites for labels
-    "country_label": "#eef7fd",
-    "state_label": "#c9d9e6",
-    "city_label": "#d8ecf8",
-    "subplace_label": "#9DB2C7",
-    "water_label": "#789ab8",
+    # Brightened ice-white, silver-cyan, and luminous neon-rose fill colors for high legibility
+    "country_label": "#ffffff",
+    "state_label": "#e6f6ff",
+    "city_label": "#f5fbff",
+    "subplace_label": "#d8f0ff",
+    "water_label": "#c2e8ff",
     "water_halo": "#050705",
-    "road_label": "#C0C9D1",
-    "shield_label": "#ff7a88",
-    "poi_text": "#ff7a88",
+    "road_label": "#eef8ff",
+    "shield_label": "#ff9ea8",
+    "poi_text": "#ff9ea8",
     "label_halo": "#050705",
 }
 
@@ -1581,64 +1638,6 @@ ICY_BLUE_PALETTE = {
     "road_label": "#1c3f63",
     "shield_label": "#0b1c30",
     "poi_text": "#173759",
-    "label_halo": "#ffffff",
-}
-
-# "Clover": Green counterpart to Icy Blue — vibrant shamrock/emerald water, bright mint-clover land,
-# crisp monochromatic green terrain zones, simplified white/mint roads, road labels hidden, Exo 2 typography
-CLOVER_PALETTE = {
-    "water": "#46b862",
-    "water_outline": "#217537",
-    "river": "#38a653",
-    "earth": "#dcf7e2",
-    "lc_grass": "#a8e8b7",
-    "lc_barren": "#edfbf0",
-    "lc_urban": "#b8edc5",
-    "lc_farm": "#c5f2d0",
-    "lc_scrub": "#8fdb9f",
-    "lc_forest": "#78d18b",
-    "park": "#78d18b",
-    "wood": "#6ac77e",
-    "scrub": "#9ae0a9",
-    "glacier": "#ffffff",
-    "sand": "#e3faea",
-    "military": "#a3e3b2",
-    "hospital": "#c2f0cd",
-    "industrial": "#b2ebc0",
-    "school": "#c8f2d2",
-    "zoo": "#88d99a",
-    "aerodrome": "#bdeec9",
-    "runway": "#f2fcf5",
-    "pedestrian": "#e3faea",
-    "pier": "#c4f0ce",
-    "buildings": "#b8edc5",
-    "buildings_outline": "#7ac98d",
-    "tunnel": "#ccf2d5",
-    "highway": "#ffffff",
-    "highway_casing": "#6cc280",
-    "major": "#f7fff9",
-    "major_casing": "#82cf94",
-    "link": "#f0fcf3",
-    "link_casing": "#96dba6",
-    "minor_a": "#ebf9ee",
-    "minor_b": "#ffffff",
-    "minor_casing": "#aae3b7",
-    "railway": "#5cb570",
-    "boundary_country_casing": "#cef5d7",
-    "boundary_country_casing_opacity": 0.72,
-    "boundary_country": "#0d3818",
-    "boundary_state_casing": "#dff9e5",
-    "boundary_state_casing_opacity": 0.58,
-    "boundary_state": "#378f4d",
-    "country_label": "#092610",
-    "state_label": "#113d1c",
-    "city_label": "#092610",
-    "subplace_label": "#174f25",
-    "water_label": "#0d471c",
-    "water_halo": "#80dba0",
-    "road_label": "#174f25",
-    "shield_label": "#092610",
-    "poi_text": "#13421f",
     "label_halo": "#ffffff",
 }
 
@@ -1938,6 +1937,69 @@ JURASSIC_PALETTE = {
     "label_halo": "#fcf9eb",
 }
 
+DUNE_PALETTE = {
+    # Arrakis / Dune Physical & Regional Terrain Coloration (no choropleth):
+    # Brown-dominant desert world with deep espresso-umber wind-rippled sand-seas (#2b1a0e),
+    # layered cinnamon, walnut, saddle-brown, and bronze-ochre terrain (#452a14, #57361a, #6e4726, #8c5e2a, #a6722e),
+    # luminous golden erg deserts (#cc9836, #e0b044), spice-melange orange urban sietches & major routes (#c76a24, #f27427),
+    # sun-yellow imperial gold highways (#ffd23f), and Syncopate Bold + Jura typography
+    "water": "#2b1a0e",
+    "water_outline": "#d49b35",
+    "river": "#b87d28",
+    "earth": "#6e4726",
+    "lc_grass": "#8c5e2a",
+    "lc_barren": "#cc9836",
+    "rock": "#543720",
+    "lc_urban": "#c76a24",
+    "lc_farm": "#a6722e",
+    "lc_scrub": "#7d4d20",
+    "lc_forest": "#452a14",
+    "park": "#523318",
+    "wood": "#3b2310",
+    "scrub": "#945c25",
+    "glacier": "#f5dfa3",
+    "sand": "#e0b044",
+    "military": "#85451d",
+    "hospital": "#d96b27",
+    "industrial": "#7a4e26",
+    "school": "#c98a2c",
+    "zoo": "#633d1b",
+    "aerodrome": "#82552a",
+    "runway": "#d4a64a",
+    "pedestrian": "#94622c",
+    "pier": "#784c22",
+    "buildings": "#b8742a",
+    "buildings_outline": "#f2c44e",
+    "tunnel": "#422813",
+    "highway": "#ffd23f",
+    "highway_casing": "#291608",
+    "major": "#f27427",
+    "major_casing": "#331908",
+    "link": "#e89e2c",
+    "link_casing": "#2e1909",
+    "minor_a": "#9c6c34",
+    "minor_b": "#e0b868",
+    "minor_casing": "#26160a",
+    "railway": "#d49b35",
+    "boundary_country_outer": "#8c5a1e",
+    "boundary_country_casing": "#e6b44c",
+    "boundary_country_casing_opacity": 0.85,
+    "boundary_country": "#1a0e05",
+    "boundary_state_casing": "#bf8b30",
+    "boundary_state_casing_opacity": 0.62,
+    "boundary_state": "#291608",
+    "country_label": "#fff9e0",
+    "state_label": "#ffe896",
+    "city_label": "#fffff2",
+    "subplace_label": "#fff3b8",
+    "water_label": "#ffe494",
+    "water_halo": "#120903",
+    "road_label": "#fffae0",
+    "shield_label": "#ffea75",
+    "poi_text": "#ffd685",
+    "label_halo": "#140a03",
+}
+
 
 def main() -> None:
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -1960,6 +2022,7 @@ def main() -> None:
             bold_font="Share Tech Mono Bold",
             reg_font="Share Tech Mono Regular",
             italic_font="Share Tech Mono Italic",
+            font_scale=1.08,
         ),
         "wasteland": build_themed_style(
             light_tpl=light_tpl,
@@ -2012,20 +2075,6 @@ def main() -> None:
             country_colors=None,
             state_colors=None,
             palette=ICY_BLUE_PALETTE,
-            bold_font="Exo 2 Bold",
-            reg_font="Exo 2 Regular",
-            italic_font="Exo 2 Italic",
-            strip_uppercase=True,
-            use_choropleth=False,
-            hide_road_labels=True,
-        ),
-        "clover": build_themed_style(
-            light_tpl=light_tpl,
-            name="Clover",
-            sprite_name="v4/light",
-            country_colors=None,
-            state_colors=None,
-            palette=CLOVER_PALETTE,
             bold_font="Exo 2 Bold",
             reg_font="Exo 2 Regular",
             italic_font="Exo 2 Italic",
@@ -2106,6 +2155,24 @@ def main() -> None:
             water_pattern="cyber_water_grid",
             use_choropleth=False,
             font_scale=1.06,
+        ),
+        "dune": build_themed_style(
+            light_tpl=light_tpl,
+            name="Dune",
+            sprite_name="v4/dark",
+            country_colors=None,
+            state_colors=None,
+            palette=DUNE_PALETTE,
+            bold_font="Dune Rise Bold",
+            reg_font="Jura SemiBold",
+            italic_font="Dune Rise Italic",
+            urban_fill_color="#c76a24",
+            water_pattern="dune_sand_waves",
+            use_choropleth=False,
+            font_scale=1.04,
+            halo_scale=0.72,
+            halo_blur=0.05,
+            border_scale=0.52,
         ),
     }
 

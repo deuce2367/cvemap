@@ -78,7 +78,11 @@ async def reverse_proxy_and_cache_headers(request: Request, call_next):
         )
     response = await call_next(request)
     p = request.url.path
-    if p.startswith("/static/vendor/protomaps-assets/sprites/") or p.startswith("/static/vendor/openglobus/"):
+    if (
+        p.startswith("/static/vendor/protomaps-assets/sprites/")
+        or p.startswith("/static/vendor/openglobus/")
+        or p.startswith("/static/vendor/maplibre-gl")
+    ):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers.setdefault("Access-Control-Allow-Origin", "*")
     response.headers.setdefault("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")

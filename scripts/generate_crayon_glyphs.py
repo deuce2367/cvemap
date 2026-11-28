@@ -34,6 +34,7 @@ PBF stacks so international labels never drop characters.
 
 import os
 import shutil
+import unicodedata
 import numpy as np
 from fontTools.ttLib import TTFont
 from PIL import Image, ImageFont
@@ -171,8 +172,9 @@ def render_sdf_glyph(
     close_iters: int = 0,
     dilate_iters: int = 0,
     italic_shear: float = 0.0,
+    render_ch: str | None = None,
 ) -> bytes | None:
-    ch = chr(codepoint)
+    ch = render_ch if render_ch is not None else chr(codepoint)
     try:
         mask24, (dx24, dy24) = font24.getmask2(ch, mode="L")
     except Exception:
@@ -289,6 +291,36 @@ def generate_font_stack(
         if msg is not None:
             rendered[cp] = msg
 
+    # Synthesize accented Latin glyphs from NFD base ASCII letters if the font is ASCII-only (e.g. Dune Rise)
+    special_latin = {
+        0x00C6: "A", 0x00E6: "a", 0x00D0: "D", 0x00F0: "d", 0x00D8: "O", 0x00F8: "o",
+        0x00DE: "P", 0x00FE: "p", 0x00DF: "s", 0x0110: "D", 0x0111: "d", 0x0141: "L",
+        0x0142: "l", 0x0152: "O", 0x0153: "o", 0x2013: "-", 0x2014: "-", 0x2018: "'",
+        0x2019: "'",
+    }
+    for cp in list(range(0x00C0, 0x0250)) + list(range(0x1E00, 0x1F00)) + list(special_latin.keys()):
+        if cp in rendered:
+            continue
+        base_ch = special_latin.get(cp)
+        if not base_ch:
+            decomp = unicodedata.normalize("NFD", chr(cp))
+            if decomp and ord(decomp[0]) in cmap:
+                base_ch = decomp[0]
+        if base_ch and ord(base_ch) in cmap:
+            msg = render_sdf_glyph(
+                font24=font24,
+                font_hi=font_hi,
+                ascent24=ascent24,
+                codepoint=cp,
+                scale=scale,
+                close_iters=close_iters,
+                dilate_iters=dilate_iters,
+                italic_shear=italic_shear,
+                render_ch=base_ch,
+            )
+            if msg is not None:
+                rendered[cp] = msg
+
     for d in out_dirs:
         os.makedirs(d, exist_ok=True)
 
@@ -330,6 +362,7 @@ def main() -> None:
     western_font_dir = os.path.join(ts_fonts, "western-fonts")
     jurassic_font_dir = os.path.join(ts_fonts, "jurassic-fonts")
     cyber_font_dir = os.path.join(ts_fonts, "cyber-fonts")
+    dune_font_dir = os.path.join(ts_fonts, "dune-fonts")
 
     specs = [
         # Elementary (Crayon Libre - CC0 Public Domain)
@@ -606,6 +639,31 @@ def main() -> None:
             0,
             0,
             0.16,
+        ),
+        # Dune (Dune Rise for major labels & water bodies + Jura SemiBold for zoomed-in detail)
+        (
+            "Dune Rise Bold",
+            os.path.join(dune_font_dir, "Dune_Rise.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Medium"),
+            1,
+            2,
+            0.0,
+        ),
+        (
+            "Jura SemiBold",
+            os.path.join(dune_font_dir, "Jura-SemiBold.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Regular"),
+            1,
+            1,
+            0.0,
+        ),
+        (
+            "Dune Rise Italic",
+            os.path.join(dune_font_dir, "Dune_Rise.ttf"),
+            os.path.join(ts_fonts, "Noto Sans Italic"),
+            1,
+            2,
+            0.18,
         ),
     ]
 
